@@ -1,53 +1,74 @@
 function drawPath(p, tool, cutType, depth) {
 
-	// this is before processing to canvas points
-	var minx = p[0][0];
-	var miny = p[0][1];
-	var maxx = p[0][0];
-	var maxy = p[0][1];
-	var firstx = p[0][0];
-	var firsty = p[0][1];
+	if (p.length == 1) {
+		// this is a single point circle
+		// which means an inside cut of a circle with a diameter of tool.diameter
+		// we just need to draw a circle that big
+		//console.log('got single point circle');
 
-	// loop through the points and convert them to canvas points
-	// you have to create a new array here or JS gets really off
-	var np = [];
-	for (var c=0; c<p.length; c++) {
-		if (p[c][0] < minx) {
-			minx = p[c][0];
-		} else if (p[c][0] > maxx) {
-			maxx = p[c][0];
-		}
-		if (p[c][1] < miny) {
-			miny = p[c][1];
-		} else if (p[c][1] > maxy) {
-			maxy = p[c][1];
-		} 
-		np[c] = getCanvPoint(p[c]);
-	}
-
-	if (maxx > sX || maxy > sY) {
-		console.log('the path is larger than the surface, path has a maximum X of '+maxx+' and a maximum Y of '+maxy);
-	}
-
-	// move to first point
-	canvasContext.beginPath();
-	canvasContext.moveTo(np[0][0],np[0][1]);
-
-	// loop through path starting at 1
-	for (var c=1; c<p.length; c++) {
-		canvasContext.lineTo(np[c][0],np[c][1]);
-	}
-
-	canvasContext.lineWidth = 1;
-	if (cutType == 'original') {
+		canvasContext.beginPath();
+		var tp = getCanvPoint(p[0]);
+		var r = tool.diameter/2*scaleFactor;
+		canvasContext.arc(tp[0],tp[1],r,0,2*Math.PI);
 		canvasContext.strokeStyle = '#d2691e';
-		// write first point at np[0]
-		//canvasContext.fillText(Math.round(firstx)+','+Math.round(firsty),np[0][0]-20,np[0][1]+20);
+		canvasContext.fillStyle = '#00008b';
+		canvasContext.fill();
+		canvasContext.stroke();
+
 	} else {
-		// draw the actual tool path a darker color
-		canvasContext.strokeStyle = '#00008b';
+
+		// draw a normal path
+
+		// this is before processing to canvas points
+		var minx = p[0][0];
+		var miny = p[0][1];
+		var maxx = p[0][0];
+		var maxy = p[0][1];
+		var firstx = p[0][0];
+		var firsty = p[0][1];
+
+		// loop through the points and convert them to canvas points
+		// you have to create a new array here or JS gets really off
+		var np = [];
+		for (var c=0; c<p.length; c++) {
+			if (p[c][0] < minx) {
+				minx = p[c][0];
+			} else if (p[c][0] > maxx) {
+				maxx = p[c][0];
+			}
+			if (p[c][1] < miny) {
+				miny = p[c][1];
+			} else if (p[c][1] > maxy) {
+				maxy = p[c][1];
+			} 
+			np[c] = getCanvPoint(p[c]);
+		}
+
+		if (maxx > sX || maxy > sY) {
+			console.log('the path is larger than the surface, path has a maximum X of '+maxx+' and a maximum Y of '+maxy);
+		}
+
+		// move to first point
+		canvasContext.beginPath();
+		canvasContext.moveTo(np[0][0],np[0][1]);
+
+		// loop through path starting at 1
+		for (var c=1; c<p.length; c++) {
+			canvasContext.lineTo(np[c][0],np[c][1]);
+		}
+
+		canvasContext.lineWidth = 1;
+		if (cutType == 'original') {
+			canvasContext.strokeStyle = '#d2691e';
+			// write first point at np[0]
+			//canvasContext.fillText(Math.round(firstx)+','+Math.round(firsty),np[0][0]-20,np[0][1]+20);
+		} else {
+			// draw the actual tool path a darker color
+			canvasContext.strokeStyle = '#00008b';
+		}
+		canvasContext.stroke();
+
 	}
-	canvasContext.stroke();
 
 }
 

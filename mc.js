@@ -493,9 +493,15 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos) {
 		}
 	} else if (obj.type == 'circle') {
 
-		// a circle is just an arc with a startDeg of 0 and a totalDeg of 360
-		// circles are whole objects, so they can be created with a single this.cut() operation
-		basePath = this.generateArc(0,360,obj.r,this.tool.diameter);
+		if (obj.r*2 == this.tool.diameter) {
+			// this circle is the exact same size as the tool
+			// tools are circles, so the path is just a single point
+			basePath = [[0,0]];
+		} else {
+			// a circle is just an arc with a startDeg of 0 and a totalDeg of 360
+			// circles are whole objects, so they can be created with a single this.cut() operation
+			basePath = this.generateArc(0,360,obj.r,this.tool.diameter);
+		}
 
 	}
 
@@ -562,7 +568,12 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos) {
 	} else if (cutType == 'outside') {
 		toolPath = this.generateOffsetPath(cutType,basePath,this.tool.diameter/2);
 	} else if (cutType == 'inside') {
-		toolPath = this.generateOffsetPath(cutType,basePath,this.tool.diameter/2);
+		if (obj.type == 'circle' && obj.r*2 == this.tool.diameter) {
+			// this is a circle which is the size of the tool, no need to create an offset
+			toolPath = basePath;
+		} else {
+			toolPath = this.generateOffsetPath(cutType,basePath,this.tool.diameter/2);
+		}
 	} else if (cutType == 'pocket') {
 		// this needs to loop over and over until it meets the center
 		toolPath = this.generateOffsetPath('inside',basePath,this.tool.diameter/2);

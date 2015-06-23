@@ -10,7 +10,7 @@
 // cut: how fast the tool should move on the X and Y axes when cutting
 // zClearance: how high above the surface the tool should be when not cutting
 // returnHome: should the tool return to 0,0,0 after finishing, true or false
-var tool = {units:'mm',diameter:3.175,passDepth:4,step:1,rapid:2000,plunge:100,cut:600,zClearance:5,returnHome:true};
+var tool = {units:'mm',diameter:6.35,passDepth:4,step:1,rapid:2000,plunge:100,cut:600,zClearance:5,returnHome:true};
 
 // setup a new Millcrum object with that tool
 var mc = new Millcrum(tool);
@@ -18,8 +18,8 @@ var mc = new Millcrum(tool);
 // set the surface dimensions for the viewer
 mc.surface(200,200);
 
-// circle object for screw holes
-var circle = {type:'circle',r:3.175/2+1};
+// circle object for screw holes the size of the bit
+var circle = {type:'circle',r:6.35/2};
 
 // cut each of the 4 with inside cuts
 mc.cut('inside', circle, 4, [20,20]);

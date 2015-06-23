@@ -29,7 +29,8 @@ var totalWidth = 24; // Y
 // the tool.passDepth is set to .55 which will cut through a 1/2" sheet
 
 // we want a 1 inch border without holes
-var circle = {type:'circle',r:.15};
+// we are making .25" holes (the size of the bit)
+var circle = {type:'circle',r:.25/2};
 
 // for each totalLength-1 line, cut totalWidth-1 holes
 for (var c=1; c<totalLength; c++) {
