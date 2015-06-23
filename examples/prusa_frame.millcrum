@@ -1,4 +1,4 @@
-// examples/prusa_frame.millcrum - a frame plate to build a prusa i3
+﻿// examples/prusa_frame.millcrum - a frame plate to build a prusa i3
 
 // create the tool options
 // units: mm or inch
@@ -16,7 +16,53 @@ var tool = {units:'mm',diameter:6.35,passDepth:4,step:1,rapid:2000,plunge:100,cu
 var mc = new Millcrum(tool);
 
 // set the surface dimensions for the viewer
-mc.surface(1000,600);
+mc.surface(400,400);
+
+// inside rect
+var inside = {type:'polygon',points:[
+	[0,0],
+	[5,-5],
+	[25,-5],
+	[40,-20],
+	[40,-35],
+	{type:'arc',r:5,startDeg:180,endDeg:0},
+	[50,-20],
+	[55,-15],
+	[100,-15],
+	[125,-40], // mid bottom
+	[135,-40], // mid bottom
+	[160,-15],
+	[205,-15],
+	[210,-20],
+	[210,-35],
+	{type:'arc',r:5,startDeg:180,endDeg:0},
+	[220,-20],
+	[235,-5],
+	[255,-5],
+	[260,0],
+	[260,270],
+	[255,275],
+	[5,275],
+	[0,270]
+]};
+mc.cut('inside', inside, 4, [75,75]);
+
+// outside rect
+var outside = {type:'polygon',points:[
+	[0,0],
+	[5,-5],
+	[25,-5],
+	[30,0],
+	[340,0],
+	[345,-5],
+	[365,-5],
+	[370,0],
+	[370,365],
+	[365,370],
+	[5,370],
+	[0,365],
+]};
+mc.cut('outside', outside, 4, [20,20]);
 
 // WORK IN PROGRESS
 

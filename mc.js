@@ -408,7 +408,7 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos) {
 			// except in the case where one of the "points" is an arc
 			if (typeof(obj.points[c]['type']) != 'undefined') {
 				// this is an arc
-				this.dbg('## ARC IN POLYGON##');
+				this.dbg('## ARC IN POLYGON AT '+c+'##');
 
 				// the arc must start from the previous point in the object
 				// we just generate the arc, then move it to start at the previous point
@@ -420,10 +420,10 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos) {
 				this.dbg(arcPath[0]);
  
 				// now we need to get the offset so we can move the arc to the correct place
-				// that is done by getting the difference between basePath[c-1] (previous point)
+				// that is done by getting the difference between the previous point
 				// and arcPath[0] (first point in arc)
-				var xDiff = basePath[c-1][0] - arcPath[0][0];
-				var yDiff = basePath[c-1][1] - arcPath[0][1];
+				var xDiff = obj.points[c-1][0] - arcPath[0][0];
+				var yDiff = obj.points[c-1][1] - arcPath[0][1];
 
 				this.dbg('xDiff = '+xDiff+', yDiff = '+yDiff);
 
