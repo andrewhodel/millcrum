@@ -39,6 +39,36 @@ Millcrum.prototype.surface = function(x,y) {
 
 };
 
+Millcrum.prototype.pointInPolygon = function(point, points) {
+	// check if a point is inside a polygon
+
+	// The solution is to compare each side of the polygon to the Y (vertical) coordinate of the test
+	// point, and compile a list of nodes, where each node is a point where one side crosses the Y
+	// threshold of the test point. In this example, eight sides of the polygon cross the Y threshold,
+	// while the other six sides do not.  Then, if there are an odd number of nodes on each side of
+	// the test point, then it is inside the polygon; if there are an even number of nodes on each
+	// side of the test point, then it is outside the polygon.
+
+	var j = points.length-1;
+	var oddNodes = false;
+
+	for (var c=0; c<points.length; c++) {
+		// if ((thisY < pointY AND thisjY >= pointY) OR (thisjY < pointY AND thisY >= pointY))
+		if ((points[c][1] < point[1] && points[j][1] >= point[1]) || (points[j][1] < point[1] && points[c][1] >= point[1])) {
+			// if (thisX+(pointY-thisY)/(thisjY-thisY)*(thisjX-thisX) < pointX)
+			if (points[c][0]+(point[1]-points[c][1])/(points[j][1]-points[c][1])*(points[j][0]-points[c][0]) < point[0]) {
+				oddNodes =! oddNodes;
+			}
+		}
+		j = c;
+	}
+
+	return oddNodes;
+
+};
+
+//console.log(Millcrum.pointInPolygon([5,5],[[0,0],[10,0],[10,10],[0,10]]));
+
 Millcrum.prototype.linesIntersection = function(l1start,l1end,l2start,l2end) {
 	// check if 2 lines intersect and return the point at which they do
 
@@ -200,7 +230,7 @@ Millcrum.prototype.generateOffsetPath = function(type, basePath, offsetDistance)
 		// on a path of ang-90 or the opposite of ang-90 (example ang of 90 would be either 0 or opposite 180)
 
 		var movedLineAng = this.addDegrees(ang,-90);
-		if (type == 'inside' || type == 'pocket') {
+		if (type == 'inside') {
 			// reverse the angle
 			movedLineAng = this.addDegrees(movedLineAng,180);
 		}
@@ -284,8 +314,29 @@ Millcrum.prototype.generateOffsetPath = function(type, basePath, offsetDistance)
 	// then we need to add a point to the end of rPath which goes back to the initial point for rPath
 	rPath.push(rPath[0]);
 
-	// return the newly offset toolpath
-	return rPath;
+	// now we need to remove points which are outside the bounds of the basePath
+	if (type == 'inside') {
+
+		for (var c=0; c<rPath.length-1; c++) {
+
+			if (!this.pointInPolygon(rPath[c],basePath)) {
+				// remove this point, it's not within the bound
+				this.dbg('removing point from polygon');
+				rPath.splice(c,1);
+			}
+
+		}
+
+	}
+
+	if (rPath.length == 1) {
+		// path not needed
+		return false;
+	} else {
+		// return the newly offset toolpath
+		return rPath;
+	}
+
 };
 
 Millcrum.prototype.cut = function(cutType, obj, depth, startPos) {
@@ -461,8 +512,10 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos) {
 	// JS forces us to cp this to a new array here
 	// we also round to 8 decimal places
 	var cp = [];
+
 	// we also collect the min, max and total size of the object here
 	// which we will need for pocket operations
+
 	var minX = basePath[0][0];
 	var minY = basePath[0][1];
 	var maxX = basePath[0][0];
@@ -512,21 +565,22 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos) {
 		toolPath = this.generateOffsetPath(cutType,basePath,this.tool.diameter/2);
 	} else if (cutType == 'pocket') {
 		// this needs to loop over and over until it meets the center
-		toolPath = this.generateOffsetPath(cutType,basePath,this.tool.diameter/2);
-		//console.log(smallestAxis);
+		toolPath = this.generateOffsetPath('inside',basePath,this.tool.diameter/2);
+		//this.dbg('smallestAxis: '+smallestAxis);
 		var previousPath = toolPath;
 
 		for (var c=0; c<(smallestAxis-(this.tool.diameter*2))/(this.tool.diameter*this.tool.step); c++) {
 
-			previousPath = this.generateOffsetPath(cutType,previousPath,this.tool.diameter*this.tool.step/2);
-			for (var a=0; a<previousPath.length; a++) {
-				// add path to toolpath
-				toolPath.push(previousPath[a]);
+			// we use the previous path (which was itself an inside offset) as the next path
+			previousPath = this.generateOffsetPath('inside',previousPath,this.tool.diameter*this.tool.step/2);
+			if (previousPath != false) {
+				// this is a real toolpath, add it
+				for (var a=0; a<previousPath.length; a++) {
+					// add path to toolpath
+					toolPath.push(previousPath[a]);
+				}
 			}
 
-			//if (c>1) {
-				//break;
-			//}
 		}
 	}
 
