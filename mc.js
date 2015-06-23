@@ -514,10 +514,17 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos) {
 		// this needs to loop over and over until it meets the center
 		toolPath = this.generateOffsetPath(cutType,basePath,this.tool.diameter/2);
 		//console.log(smallestAxis);
+		var previousPath = toolPath;
+
 		for (var c=0; c<(smallestAxis-(this.tool.diameter*2))/(this.tool.diameter*this.tool.step); c++) {
-			//console.log(c,this.tool.diameter*this.tool.step/2*c+this.tool.diameter);
-			toolPath = toolPath.concat(this.generateOffsetPath(cutType,basePath,this.tool.diameter*this.tool.step/2*c+this.tool.diameter));
-			//if (c>3) {
+
+			previousPath = this.generateOffsetPath(cutType,previousPath,this.tool.diameter*this.tool.step/2);
+			for (var a=0; a<previousPath.length; a++) {
+				// add path to toolpath
+				toolPath.push(previousPath[a]);
+			}
+
+			//if (c>1) {
 				//break;
 			//}
 		}
