@@ -612,11 +612,11 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos) {
 
 	// move to zClearance
 	this.gcode += '\n; MOVING TO this.tool.zClearance\n';
-	this.gcode += 'G1 F'+this.tool.rapid+' Z'+this.tool.zClearance+'\n';
+	this.gcode += 'G0 F'+this.tool.rapid+' Z'+this.tool.zClearance+'\n';
 
 	// move to first point in toolPath
 	this.gcode += '; MOVING TO FIRST POINT IN toolPath\n';
-	this.gcode += 'G1 F'+this.tool.rapid+' X'+toolPath[0][0]+' Y'+toolPath[0][1]+'\n';
+	this.gcode += 'G0 F'+this.tool.rapid+' X'+toolPath[0][0]+' Y'+toolPath[0][1]+'\n';
 
 	// now for each Z pass, generate the actual path
 	var zPos = 0;
@@ -651,7 +651,7 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos) {
 
 	// now move back to zClearance
 	this.gcode += '\n; PATH FINISHED FOR '+obj.type+' WITH '+cutType+' CUT, MOVING BACK TO this.tool.zClearance\n';
-	this.gcode += 'G1 F'+this.tool.rapid+' Z'+this.tool.zClearance+'\n';
+	this.gcode += 'G0 F'+this.tool.rapid+' Z'+this.tool.zClearance+'\n';
 
 };
 
