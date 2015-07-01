@@ -5,18 +5,6 @@ var Millcrum = function(tool) {
 
 };
 
-Millcrum.prototype.dbg = function() {
-	// apply all arguments passed to this.dbg() to v
-	// so that console.log() just prints multiple args like normal
-	var v = [].slice.apply(arguments);
-	if (v.length == 1) {
-		v = v[0];
-	}
-	if (this.debug == true) {
-		console.log(v);
-	}
-};
-
 Millcrum.prototype.addDegrees = function(base,mod) {
 	// this function expects a 360 degree number
 	// base and mod must be between 0-360
@@ -169,7 +157,7 @@ Millcrum.prototype.generateArc = function(startDeg,endDeg,r,toolDiameter) {
 		fDist = this.distanceFormula(p[0],this.newPointFromDistanceAndAngle([0,0],this.addDegrees(startDeg,degreeStep),r));
 	}
 
-	this.dbg('total number of steps '+f+' at '+degreeStep+' degrees which is 360/'+f+' and a distance of '+fDist);
+	//console.log('total number of steps '+f+' at '+degreeStep+' degrees which is 360/'+f+' and a distance of '+fDist);
 
 	// now get the number of fragments to actually create, based on the total degrees
 	// which is the absolute value of startDeg-endDeg / 360 then multiplied by the total number of fragments
@@ -187,8 +175,8 @@ Millcrum.prototype.generateOffsetPath = function(type, basePath, offsetDistance)
 	// type of either inside or outside
 	// offsetDistance determines how far away it is
 
-	this.dbg('##GENERATING OFFSET PATH##');
-	this.dbg('');
+	//console.log('##GENERATING OFFSET PATH##');
+	//console.log('');
 
 	// first create an array of midpoints and angles for the offset path
 	var newMidpoints = [];
@@ -203,7 +191,7 @@ Millcrum.prototype.generateOffsetPath = function(type, basePath, offsetDistance)
 
 		var currentPoint = basePath[c];
 		var previousPoint = basePath[c-1];
-		this.dbg('##LINE '+c+' from '+previousPoint[0]+','+previousPoint[1]+' to '+currentPoint[0]+','+currentPoint[1]+'##');
+		//console.log('##LINE '+c+' from '+previousPoint[0]+','+previousPoint[1]+' to '+currentPoint[0]+','+currentPoint[1]+'##');
 
 		// get the deltas for X and Y to calculate the line angle with atan2
 		var deltaX = currentPoint[0]-previousPoint[0];
@@ -211,14 +199,14 @@ Millcrum.prototype.generateOffsetPath = function(type, basePath, offsetDistance)
 
 		// get the line angle
 		var ang = Math.atan2(deltaY,deltaX);
-		this.dbg('  ANGLE '+ang+' or '+(ang*180/Math.PI));
+		//console.log('  ANGLE '+ang+' or '+(ang*180/Math.PI));
 
 		// convert it to degrees for later math with addDegree
 		ang = ang*180/Math.PI;
 
 		// get the length of the line
 		var len = this.distanceFormula(currentPoint,previousPoint);
-		this.dbg('  LENGTH '+len);
+		//console.log('  LENGTH '+len);
 
 		if (len > longestLine) {
 			// update longestLine
@@ -234,7 +222,7 @@ Millcrum.prototype.generateOffsetPath = function(type, basePath, offsetDistance)
 			// reverse the angle
 			movedLineAng = this.addDegrees(movedLineAng,180);
 		}
-		this.dbg('  offsetting '+offsetDistance+' '+type);
+		//console.log('  offsetting '+offsetDistance+' '+type);
 
 		// now split the line at the middle length and get that point
 		// then get the coords of the midpoint on the new lines calculated
@@ -244,22 +232,22 @@ Millcrum.prototype.generateOffsetPath = function(type, basePath, offsetDistance)
 
 		// get the point coordinate at midpoint of this line
 		var midpoint = this.newPointFromDistanceAndAngle(previousPoint,ang,len/2);
-		this.dbg('  line midpoint');
-		this.dbg(midpoint);
+		//console.log('  line midpoint');
+		//console.log(midpoint);
 
 		// now we need the new midpoint for pathAng
 		// from midpoint with the this.tool.diameter/2 for a distance
 		var movedLineMidPoint = this.newPointFromDistanceAndAngle(midpoint,movedLineAng,offsetDistance);
-		this.dbg('  movedLineMidPoint');
-		this.dbg(movedLineMidPoint);
-		this.dbg('');
+		//console.log('  movedLineMidPoint');
+		//console.log(movedLineMidPoint);
+		//console.log('');
 
 		newMidpoints.push([movedLineMidPoint,ang]);
 
 	}
 
-	this.dbg('##newMidpoints##');
-	this.dbg(newMidpoints);
+	//console.log('##newMidpoints##');
+	//console.log(newMidpoints);
 
 	// we will add (longestLine+offsetDistance)*2 to each new line half that we create
 	// so that we can find the point of intersection and be sure that the line is long
@@ -281,7 +269,7 @@ Millcrum.prototype.generateOffsetPath = function(type, basePath, offsetDistance)
 			var previousMidPoint = newMidpoints[c-1];
 		}
 
-		this.dbg('  midpoint #'+c);
+		//console.log('  midpoint #'+c);
 
 		// since we have the midpoint, first we have to generate the test lines
 		// the current mid point is extended at it's opposite angle
@@ -293,8 +281,8 @@ Millcrum.prototype.generateOffsetPath = function(type, basePath, offsetDistance)
 		// this will give us a single point which is the START point for the current line and
 		// the END point for the previous line
 		var iPoint = this.linesIntersection(previousMidPoint[0],previousMidPointEndPoint,currentMidPoint[0],currentMidPointEndPoint);
-		this.dbg('  intersection point for current mid point in CW');
-		this.dbg(iPoint);
+		//console.log('  intersection point for current mid point in CW');
+		//console.log(iPoint);
 
 		// if iPoint.error == true here and path is inside, then we can somehow shrink the path
 		// but if path is outside there's a problem
@@ -321,7 +309,7 @@ Millcrum.prototype.generateOffsetPath = function(type, basePath, offsetDistance)
 
 			if (!this.pointInPolygon(rPath[c],basePath)) {
 				// remove this point, it's not within the bound
-				this.dbg('removing point from polygon');
+				//console.log('removing point from polygon');
 				rPath.splice(c,1);
 			}
 
@@ -351,17 +339,17 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos) {
 		startPos = [0,0];
 	}
 
-	this.dbg('generating cut operation:');
-	this.dbg('##tool##');
-	this.dbg(this.tool);
-	this.dbg('##cutType##');
-	this.dbg(cutType);
-	this.dbg('##obj.type##');
-	this.dbg(obj.type);
-	this.dbg('##depth##');
-	this.dbg(depth);
-	this.dbg('##startPos##');
-	this.dbg(startPos);
+	//console.log('generating cut operation:');
+	//console.log('##tool##');
+	//console.log(this.tool);
+	//console.log('##cutType##');
+	//console.log(cutType);
+	//console.log('##obj.type##');
+	//console.log(obj.type);
+	//console.log('##depth##');
+	//console.log(depth);
+	//console.log('##startPos##');
+	//console.log(startPos);
 
 	var basePath = [];
 
@@ -459,16 +447,16 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos) {
 			// except in the case where one of the "points" is an arc
 			if (typeof(obj.points[c]['type']) != 'undefined') {
 				// this is an arc
-				this.dbg('## ARC IN POLYGON AT '+c+'##');
+				//console.log('## ARC IN POLYGON AT '+c+'##');
 
 				// the arc must start from the previous point in the object
 				// we just generate the arc, then move it to start at the previous point
 				arcPath = this.generateArc(obj.points[c]['startDeg'],obj.points[c]['endDeg'],obj.points[c]['r'],this.tool.diameter);
 
-				this.dbg(arcPath);
+				//console.log(arcPath);
 
-				this.dbg('first point in the arcPath is:');
-				this.dbg(arcPath[0]);
+				//console.log('first point in the arcPath is:');
+				//console.log(arcPath[0]);
  
 				// now we need to get the offset so we can move the arc to the correct place
 				// that is done by getting the difference between the previous point
@@ -476,18 +464,18 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos) {
 				var xDiff = obj.points[c-1][0] - arcPath[0][0];
 				var yDiff = obj.points[c-1][1] - arcPath[0][1];
 
-				this.dbg('xDiff = '+xDiff+', yDiff = '+yDiff);
+				//console.log('xDiff = '+xDiff+', yDiff = '+yDiff);
 
 				for (a=1; a<arcPath.length; a++) {
 					// add each segment of the arc path to the basePath
 					// we don't need the first as there is already a user defined point there so a=1
-					this.dbg('adding ',[arcPath[a][0]+xDiff,arcPath[a][1]+yDiff]);
+					//console.log('adding ',[arcPath[a][0]+xDiff,arcPath[a][1]+yDiff]);
 					basePath.push([arcPath[a][0]+xDiff,arcPath[a][1]+yDiff]);
 				}
 
 			} else {
 				// just add the point to the path
-				this.dbg('inserting point '+obj.points[c][0]+','+obj.points[c][1]+' into polygon');
+				//console.log('inserting point '+obj.points[c][0]+','+obj.points[c][1]+' into polygon');
 				basePath.push([obj.points[c][0],obj.points[c][1]]);
 			}
 		}
@@ -555,8 +543,8 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos) {
 		smallestAxis = total[1];
 	}
 
-	this.dbg('##basePath##');
-	this.dbg(basePath);
+	//console.log('##basePath##');
+	//console.log(basePath);
 
 	drawPath(basePath, this.tool, 'original', depth);
 
@@ -577,7 +565,7 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos) {
 	} else if (cutType == 'pocket') {
 		// this needs to loop over and over until it meets the center
 		toolPath = this.generateOffsetPath('inside',basePath,this.tool.diameter/2);
-		//this.dbg('smallestAxis: '+smallestAxis);
+		//console.log('smallestAxis: '+smallestAxis);
 		var previousPath = toolPath;
 
 		for (var c=0; c<(smallestAxis-(this.tool.diameter*2))/(this.tool.diameter*this.tool.step); c++) {
@@ -595,8 +583,8 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos) {
 		}
 	}
 
-	this.dbg('##toolPath##');
-	this.dbg(toolPath);
+	//console.log('##toolPath##');
+	//console.log(toolPath);
 
 	// send this path to drawPath
 	drawPath(toolPath, this.tool, cutType, depth);
@@ -642,7 +630,7 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos) {
 		this.gcode += 'G1 F'+this.tool.cut+'\n';
 
 		// move to Z
-		for (c=1; c<toolPath.length; c++) {
+		for (c=0; c<toolPath.length; c++) {
 			// generate each straight line
 			this.gcode += 'G1 X'+toolPath[c][0]+' Y'+toolPath[c][1]+'\n';
 		}
@@ -690,7 +678,7 @@ Millcrum.prototype.get = function() {
 	// this needs to be moved outside of the object and at the end of all objects
 	if (this.tool.returnHome == true) {
 		this.gcode += '\n; RETURNING TO 0,0,0 BECAUSE this.tool.returnHome IS SET\n';
-		this.gcode += 'G1 X0 Y0 Z0\n';
+		this.gcode += 'G0 F'+this.tool.rapid+' X0 Y0 Z0\n';
 	}
 
 	//console.log(this.gcode);
