@@ -567,9 +567,6 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, reverse) {
 	//console.log('##basePath##');
 	//console.log(basePath);
 
-	// draw the path on the html canvas
-	drawPath(basePath, this.tool, 'original', depth);
-
 	// we need to figure out the path direction because the path offset algorithm
 	// expects a CCW path for paths which hasTAngle is true, however we can always change the path direction to either
 	// direction before or after the tool path processing
@@ -643,8 +640,13 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, reverse) {
 	//console.log('##toolPath##');
 	//console.log(toolPath);
 
-	// send this path to drawPath which draws it on the html canvas
-	drawPath(toolPath, this.tool, cutType, depth);
+	// draw the original path on the html canvas
+	drawPath(basePath, this.tool, cutType, depth, true);
+
+	if (cutType != 'centerOnPath') {
+		// draw the offset path on the html canvas
+		drawPath(toolPath, this.tool, cutType, depth, false);
+	}
 
 	// now put a comment that explains that the next block of GCODE is for this obj
 	this.gcode += '\n; PATH FOR '+obj.type+' WITH '+cutType+' CUT\n';

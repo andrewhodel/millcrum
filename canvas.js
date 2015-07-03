@@ -1,4 +1,4 @@
-function drawPath(p, tool, cutType, depth) {
+function drawPath(p, tool, cutType, depth, isOriginal) {
 
 	if (p.length == 1) {
 		// this is a single point circle
@@ -44,6 +44,28 @@ function drawPath(p, tool, cutType, depth) {
 			np[c] = getCanvPoint(p[c]);
 		}
 
+		if (isOriginal) {
+
+			// get the path direction
+			var signedArea = 0;
+			for (var i=1; i<np.length; i++) {
+				if (np[i][0] == np[i-1][0] && np[i][1] == np[i-1][1]) {
+					// skip this point it is the same as the last
+					continue;
+				}
+				signedArea += np[i][0] * np[i-1][1] - np[i-1][0] * np[i][1];
+			}
+
+			var pathDir = 'Climb (CCW)';
+			if (signedArea < 0) {
+				// clockwise paths have an area below 0
+				pathDir = 'Conventional (CW)';
+			}
+
+			// store the path for mouse clicks
+			clickPaths.push({path:np,cutType:cutType,depth:depth,pathDir:pathDir,signedArea:signedArea/2});
+		}
+
 		if (maxx > sX || maxy > sY) {
 			console.log('the path is larger than the surface, path has a maximum X of '+maxx+' and a maximum Y of '+maxy);
 		}
@@ -58,7 +80,7 @@ function drawPath(p, tool, cutType, depth) {
 		}
 
 		canvasContext.lineWidth = 1;
-		if (cutType == 'original') {
+		if (isOriginal) {
 			canvasContext.strokeStyle = '#d2691e';
 			// write first point at np[0]
 			//canvasContext.fillText(Math.round(firstx)+','+Math.round(firsty),np[0][0]-20,np[0][1]+20);

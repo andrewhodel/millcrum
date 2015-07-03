@@ -23,7 +23,11 @@ var rect = {type:'rect',xLen:50,yLen:50};
 
 // cut the square with an pocket path and position it at 200,100
 // depth 4
-mc.cut('pocket', rect, 4, [200,100]);
+// if you set the 5th argument to mc.cut() as true it will reverse the path
+// so instead of the normal CCW (Climb) path direction it will cut a CW (Conventional) path
+mc.cut('pocket', rect, 4, [200,100], true);
+
+// YOU CAN CLICK ON THE OBJECTS IN MILLCRUM TO SEE THEIR PATH DIRECTION AND CUT INFO
 
 // create a rectangle of 80mm x 80mm with a corner radius of 4mm
 var rectCornerRadius = {type:'rect',xLen:80,yLen:80,cornerRadius:4};
