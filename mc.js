@@ -2,7 +2,6 @@ var Millcrum = function(tool) {
 	this.gcode = '';
 	this.debug = false;
 	this.tool = tool;
-
 };
 
 Millcrum.prototype.addDegrees = function(base,mod) {
@@ -327,7 +326,7 @@ Millcrum.prototype.generateOffsetPath = function(type, basePath, offsetDistance)
 
 };
 
-Millcrum.prototype.cut = function(cutType, obj, depth, startPos) {
+Millcrum.prototype.cut = function(cutType, obj, depth, startPos, reverse) {
 
 	if (typeof(depth) == 'undefined') {
 		// default depth of a cut is the tool defined passDepth
@@ -337,6 +336,11 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos) {
 	if (typeof(startPos) == 'undefined') {
 		// default start position is X0 Y0
 		startPos = [0,0];
+	}
+
+	if (typeof(reverse) == 'undefined') {
+		// default reverse is false
+		reverse = false;
 	}
 
 	//console.log('generating cut operation:');
@@ -515,6 +519,11 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos) {
 	var maxX = basePath[0][0];
 	var maxY = basePath[0][1];
 	var total = [];
+
+	// we also need to see if any line segments in the path are 0,90,180 or 270 degrees
+	// because the offset algorithm needs to know this
+	var hasTAngle = false;
+
 	for (var c=0; c<basePath.length; c++) {
 
 		if (basePath[c][0] < minX) {
@@ -527,6 +536,18 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos) {
 			minY = basePath[c][1];
 		} else if (basePath[c][1] > maxY) {
 			maxY = basePath[c][1];
+		}
+
+		if (c > 0) {
+			// get the deltas for X and Y to calculate the line angle with atan2
+			var deltaX = basePath[c][0]-basePath[c-1][0];
+			var deltaY = basePath[c][1]-basePath[c-1][1];
+
+			// get the line angle
+			var ang = Math.atan2(deltaY,deltaX);
+			if (ang === 90 || ang === 180 || ang === 270 || ang === 360 || ang === 0) {
+				hasTAngle = true;
+			}
 		}
 
 		cp[c] = [];
@@ -546,7 +567,30 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos) {
 	//console.log('##basePath##');
 	//console.log(basePath);
 
+	// draw the path on the html canvas
 	drawPath(basePath, this.tool, 'original', depth);
+
+	// we need to figure out the path direction because the path offset algorithm
+	// expects a CCW path for paths which hasTAngle is true, however we can always change the path direction to either
+	// direction before or after the tool path processing
+
+	// this is only true of a non centerOnPath cutType
+	var wasReversed = false;
+	if (hasTAngle == true && cutType != 'centerOnPath') {
+		// to figure out the path direction we can draw an outside offset path then test if any
+		// point in the newly created path is inside the original path, if it is this means that
+		// the path direction is CW not CCW which means we will need to temporarily reverse it to
+		// generate the correct offset path
+
+		var testOffset = this.generateOffsetPath('outside',basePath,this.tool.diameter/2);
+		if (this.pointInPolygon(testOffset[0],basePath)) {
+			// reverse the path
+			wasReversed = true;
+			//console.log('reversing path to generate correct offset, path must be CW and have a T angle line segment');
+			basePath.reverse();
+		}
+
+	}
 
 	var toolPath = [];
 	if (cutType == 'centerOnPath') {
@@ -583,10 +627,23 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos) {
 		}
 	}
 
+	if (wasReversed == true) {
+		// we need to now set the path and offset path back to their original direction
+		basePath.reverse();
+		toolPath.reverse();
+	}
+
+	// for reversing path directions to change between the default CCW (Climb) cut
+	// to a CW (Conventional) cut
+	if (reverse == true) {
+		basePath.reverse();
+		toolPath.reverse();
+	}
+
 	//console.log('##toolPath##');
 	//console.log(toolPath);
 
-	// send this path to drawPath
+	// send this path to drawPath which draws it on the html canvas
 	drawPath(toolPath, this.tool, cutType, depth);
 
 	// now put a comment that explains that the next block of GCODE is for this obj
