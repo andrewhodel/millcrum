@@ -37,6 +37,7 @@ addLoadEvent(function() {
 				pathInfo.style.left = e.pageX-220 + 'px';
 				pathInfo.style.top = e.pageY + 'px';
 				pathInfo.style.display = 'block';
+				break;
                         }   
                 }   
 
