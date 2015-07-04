@@ -445,6 +445,7 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, reverse) {
 
 	} else if (obj.type == 'polygon') {
 		// a polygon is just a set of points which represent the steps of a climb cut
+
 		// we just push each point to the basePath
 		for (var c=0; c<obj.points.length; c++) {
 
@@ -497,14 +498,6 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, reverse) {
 
 	}
 
-	// check if the last point in the basePath is equal to the first, if not add it
-	if (basePath[0][0] == basePath[basePath.length-1][0] && basePath[0][1] == basePath[basePath.length-1][1]) {
-		// they both are equal
-	} else {
-		// add it to the end
-		basePath.push(basePath[0]);
-	}
-
 	// here we need to offset basePath by startPos
 	// this allows users to create objects and move them around
 	// JS forces us to cp this to a new array here
@@ -524,16 +517,26 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, reverse) {
 	// because the offset algorithm needs to know this
 	var hasTAngle = false;
 
+	// per the inside path generation algorithm we need to ensure that the starting point of the polygon is
+	// on the outer bounds of the path, see bug #4 on Github
+	var safeStartingPoint = 0;
+
 	for (var c=0; c<basePath.length; c++) {
 
 		if (basePath[c][0] < minX) {
 			minX = basePath[c][0];
+			// this will result in the point with the lowest X being a safe starting point
+			safeStartingPoint = c;
 		} else if (basePath[c][0] > maxX) {
 			maxX = basePath[c][0];
 		}
 
 		if (basePath[c][1] < minY) {
 			minY = basePath[c][1];
+			if (basePath[safeStartingPoint][0] == basePath[c][0]) {
+				// at this point the safeStartingPoint will have the lowest X and a low Y
+				safeStartingPoint = c;
+			}
 		} else if (basePath[c][1] > maxY) {
 			maxY = basePath[c][1];
 		}
@@ -551,17 +554,42 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, reverse) {
 		}
 
 		cp[c] = [];
-		// move X
+		// offset X by startPos
 		cp[c].push(Math.round((basePath[c][0]+startPos[0])*100000000)/100000000);
-		// move Y
+		// offset Y by startPos
 		cp[c].push(Math.round((basePath[c][1]+startPos[1])*100000000)/100000000);
 	}
-	basePath = cp;
+
+	// now we can re-order cp to start from the safeStartingPoint if we need to
+	if (safeStartingPoint > 0 && obj.type == 'polygon') {
+
+		//console.log('re-ordering polygon to start from safeStartingPoint #'+safeStartingPoint,cp[safeStartingPoint]);
+		// move anything before safeStartingPoint to the end of the path
+		var newEnd = cp.slice(0,safeStartingPoint);
+		var newStart = cp.slice(safeStartingPoint);
+		var tcp = Array.concat(newStart,newEnd);
+		basePath = tcp;
+
+	} else {
+
+		basePath = cp;
+
+	}
+
 	total.push(maxX-minX);
 	total.push(maxY-minY);
+
 	var smallestAxis = total[0];
 	if (total[1] < total[0]) {
 		smallestAxis = total[1];
+	}
+
+	// check if the last point in the basePath is equal to the first, if not add it
+	if (basePath[0][0] == basePath[basePath.length-1][0] && basePath[0][1] == basePath[basePath.length-1][1]) {
+		// they both are equal
+	} else {
+		// add it to the end, this will close the polygon
+		basePath.push(basePath[0]);
 	}
 
 	//console.log('##basePath##');
