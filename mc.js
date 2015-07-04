@@ -669,15 +669,15 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, reverse) {
 	//console.log(toolPath);
 
 	// draw the original path on the html canvas
-	drawPath(basePath, this.tool, cutType, depth, true);
+	drawPath(basePath, this.tool, cutType, depth, true, obj.name);
 
 	if (cutType != 'centerOnPath') {
 		// draw the offset path on the html canvas
-		drawPath(toolPath, this.tool, cutType, depth, false);
+		drawPath(toolPath, this.tool, cutType, depth, false, obj.name);
 	}
 
 	// now put a comment that explains that the next block of GCODE is for this obj
-	this.gcode += '\n; PATH FOR '+obj.type+' WITH '+cutType+' CUT\n';
+	this.gcode += '\n; PATH FOR "'+obj.name+'" '+obj.type+' WITH '+cutType+' CUT\n';
 
 	// calculate the number of Z passes
 	var numZ = Math.ceil(depth/this.tool.passDepth);
@@ -725,7 +725,7 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, reverse) {
 	}
 
 	// now move back to zClearance
-	this.gcode += '\n; PATH FINISHED FOR '+obj.type+' WITH '+cutType+' CUT, MOVING BACK TO this.tool.zClearance\n';
+	this.gcode += '\n; PATH FINISHED FOR "'+obj.name+'" '+obj.type+' WITH '+cutType+' CUT, MOVING BACK TO this.tool.zClearance\n';
 	this.gcode += 'G0 F'+this.tool.rapid+' Z'+this.tool.zClearance+'\n';
 
 };

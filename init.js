@@ -32,8 +32,7 @@ addLoadEvent(function() {
                 // test if the click was within on of the clickPaths
                 for (c=0; c<clickPaths.length; c++) {
                         if (localMc.pointInPolygon([e.pageX-lcanv.offsetLeft,e.pageY-lcanv.offsetTop],clickPaths[c].path)) {
-				console.log(clickPaths[c]);
-				pathInfoText.innerHTML = 'Cut Type: '+clickPaths[c].cutType+'\nDepth: '+clickPaths[c].depth+'\nDirection: '+clickPaths[c].pathDir+'\nArea: ~'+Math.round(clickPaths[c].signedArea)+'\n';
+				pathInfoText.innerHTML = 'Name: '+clickPaths[c].name+'\nCut Type: <span style="color: #00008b;">'+clickPaths[c].cutType+'</span>\nDepth: '+clickPaths[c].depth+'\nDirection: '+clickPaths[c].pathDir+'\nArea: ~'+clickPaths[c].signedArea+'\nStart Point: X'+clickPaths[c].startPoint[0]+' Y'+clickPaths[c].startPoint[1]+'\n';
 				pathInfo.style.left = e.pageX-220 + 'px';
 				pathInfo.style.top = e.pageY + 'px';
 				pathInfo.style.display = 'block';

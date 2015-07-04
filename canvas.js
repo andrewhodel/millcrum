@@ -1,4 +1,4 @@
-function drawPath(p, tool, cutType, depth, isOriginal) {
+function drawPath(p, tool, cutType, depth, isOriginal, name) {
 
 	if (p.length == 1) {
 		// this is a single point circle
@@ -62,8 +62,15 @@ function drawPath(p, tool, cutType, depth, isOriginal) {
 				pathDir = 'Conventional (CW)';
 			}
 
+			var cDepth = depth;
+			if (depth > tool.passDepth) {
+				cDepth = depth+tool.units+' ('+Math.ceil(depth/tool.passDepth)+' passes)';
+			} else {
+				cDepth = depth+tool.units+' (1 pass)';
+			}
+
 			// store the path for mouse clicks
-			clickPaths.push({path:np,cutType:cutType,depth:depth,pathDir:pathDir,signedArea:signedArea/2});
+			clickPaths.push({path:np,cutType:cutType,depth:cDepth,pathDir:pathDir,signedArea:Math.round(signedArea/2)+tool.units,startPoint:p[0],name:name});
 		}
 
 		if (maxx > sX || maxy > sY) {

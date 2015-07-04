@@ -19,7 +19,8 @@ var mc = new Millcrum(tool);
 mc.surface(1000,600);
 
 // create a 50mm x 50mm square
-var rect = {type:'rect',xLen:50,yLen:50};
+// the name is not required, but it will display on the canvas and in the gcode comments
+var rect = {type:'rect',xLen:50,yLen:50,name:'50mm square'};
 
 // cut the square with an pocket path and position it at 200,100
 // depth 4
