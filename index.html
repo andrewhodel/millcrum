@@ -7,6 +7,7 @@
 <script type="text/javascript" src="init.js"></script>
 <script type="text/javascript" src="canvas.js"></script>
 <script type="text/javascript" src="mc.js"></script>
+<script type="text/javascript" src="dxf.js"></script>
 <script type="text/javascript" src="ea/edit_area_full.js"></script>
 </head>
 
@@ -15,6 +16,12 @@
 <center><canvas width="600" height="600" id="container" style="background-color: #fff; border-radius: 4px; z-index: 1;"></canvas></center>
 
 <div id="drag" draggable="true" style="position: absolute; left: 50px; top: 20px; border-radius: 4px; border: 1px solid #333; width: 680px; background-color: #aaa; padding: 6px; z-index: 2;"> <!-- edit window -->
+
+	<div style="float: left; padding: 6px; clear: both;"> <!-- left buttons -->
+
+		Open .dxf <input id="openDxf" type="file" />
+
+	</div> <!-- end left buttons -->
 
 	<div style="float: right; margin: 4px; text-align: right;"> <!-- right xy surface size inputs -->
 
@@ -25,7 +32,7 @@
 
 	<div style="float: left; padding: 6px;"> <!-- left buttons -->
 
-		Open <input id="openMillcrum" type="file" /> | <a href="#" id="saveMillcrum">Save .millcrum</a>
+		Open .millcrum <input id="openMillcrum" type="file" /> | <a href="#" id="saveMillcrum">Save .millcrum</a>
 
 	</div> <!-- end left buttons -->
 

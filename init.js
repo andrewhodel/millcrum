@@ -50,7 +50,7 @@ addLoadEvent(function() {
 	var sgc = document.getElementById('saveGcode');
 	var smc = document.getElementById('saveMillcrum');
 	var omc = document.getElementById('openMillcrum');
-	var omc = document.getElementById('openMillcrum');
+	var odxf = document.getElementById('openDxf');
 
 	var pathInfo = document.getElementById('pathInfo');
 	var pathInfoText = document.getElementById('pathInfoText');
@@ -122,6 +122,40 @@ addLoadEvent(function() {
 	smc.addEventListener('click', function() {
 		var blob = new Blob([editAreaLoader.getValue('millcrumCode')], {type: 'text/plain;charset=utf-8'});
 		saveAs(blob, 'output.millcrum');
+	});
+
+	// open .dxf
+	odxf.addEventListener('change', function(e) {
+		var r = new FileReader();
+		r.readAsText(odxf.files[0]);
+		r.onload = function(e) {
+
+			var dxf = new Dxf();
+
+			dxf.parseDxf(r.result);
+			var s = 'var tool = {units:"mm",diameter:6.35,passDepth:4,step:1,rapid:2000,plunge:100,cut:600,zClearance:5,returnHome:true};\n';
+
+			s += '// setup a new Millcrum object with that tool\nvar mc = new Millcrum(tool);\n';
+			s += '// set the surface dimensions for the viewer\nmc.surface('+(dxf.width*1.5)+','+(dxf.height*1.5)+');\n';
+
+			for (var c=0; c<dxf.polygons.length; c++) {
+				var wtf = dxf.polygons[c].layer;
+				s += '\n//LAYER '+wtf+'\n';
+				s += 'var polygon'+c+' = {type:\'polygon\',name:\''+wtf+'\',points:[';
+				for (var p=0; p<dxf.polygons[c].points.length; p++) {
+					s += '['+dxf.polygons[c].points[p][0]+','+dxf.polygons[c].points[p][1]+'],';
+				}
+
+				s += ']};\nmc.cut(\'centerOnPath\', polygon'+c+', 4, [0,0]);\n';
+			}
+
+			s += '\nmc.get();\n';
+
+			// load the new millcrum code
+			editAreaLoader.setValue('millcrumCode',s);
+			// convert the .millcrum to gcode
+			generate.click();
+		}
 	});
 
 	// open .millcrum
