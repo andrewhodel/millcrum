@@ -1,5 +1,6 @@
 var Dxf = function() {
 	this.layers = [];
+	this.lines = [];
 	this.polylines = [];
 	this.minPoint = [0,0];
 	this.maxPoint = [0,0];
@@ -112,7 +113,7 @@ Dxf.prototype.handleEntities = function(d) {
 	// each entity starts with '  0' then the next line is the type of entity
 	var currentEntity = {type:'',lines:[]};
 
-	var entitiesToKeep = ['lwpolyline','polyline'];
+	var entitiesToKeep = ['lwpolyline','polyline','line'];
 
 	var totalEntities = 0;
 
@@ -148,8 +149,12 @@ Dxf.prototype.handleEntities = function(d) {
 						// need to decrement the line counter by one so not to skip every other entity
 						c--;
 
-						// send to entity handler for this type
-						this.handlePolyline(currentEntity);
+						// send to entity handler type
+						if (entitiesToKeep[i] == 'line') {
+							this.handleLine(currentEntity);
+						} else {
+							this.handlePolyline(currentEntity);
+						}
 						totalEntities++;
 
 						isValid = true;
@@ -170,6 +175,72 @@ Dxf.prototype.handleEntities = function(d) {
 
 };
 
+Dxf.prototype.handleLine = function(d) {
+
+	console.log('handleLine',d);
+
+	var thisLine = [0,0,0,0,0,0];
+
+	// now loop through each of the lines for the line
+	// 10,20,30 = x,y,z start
+	// 11,21,31 = x,y,z end
+	for (var c = 0; c < d.lines.length; c++) {
+		if (d.lines[c] == ' 10') {
+			c++;
+			thisLine[0] = Number(d.lines[c]);
+		} else if (d.lines[c] == ' 20') {
+			c++;
+			thisLine[1] = Number(d.lines[c]);
+		} else if (d.lines[c] == ' 30') {
+			c++;
+			thisLine[2] = Number(d.lines[c]);
+		} else if (d.lines[c] == ' 11') {
+			c++;
+			thisLine[3] = Number(d.lines[c]);
+		} else if (d.lines[c] == ' 21') {
+			c++;
+			thisLine[4] = Number(d.lines[c]);
+		} else if (d.lines[c] == ' 31') {
+			c++;
+			thisLine[5] = Number(d.lines[c]);
+		}
+	}
+
+	// check if line exceeds min and max DXF point
+	// if so update
+
+	// for x start
+	if (thisLine[0] > this.maxPoint[0]) {
+		this.maxPoint[0] = thisLine[0];
+	} else if (thisLine[0] < this.minPoint[0]) {
+		this.minPoint[0] = thisLine[0];
+	}
+
+	// for y start
+	if (thisLine[1] > this.maxPoint[1]) {
+		this.maxPoint[1] = thisLine[1];
+	} else if (thisLine[1] < this.minPoint[1]) {
+		this.minPoint[1] = thisLine[1];
+	}
+
+	// for x end
+	if (thisLine[3] > this.maxPoint[0]) {
+		this.maxPoint[0] = thisLine[3];
+	} else if (thisLine[3] < this.minPoint[0]) {
+		this.minPoint[0] = thisLine[3];
+	}
+
+	// for y end
+	if (thisLine[4] > this.maxPoint[1]) {
+		this.maxPoint[1] = thisLine[4];
+	} else if (thisLine[4] < this.minPoint[1]) {
+		this.minPoint[1] = thisLine[4];
+	}
+
+	this.lines.push(thisLine);
+
+};
+
 Dxf.prototype.handlePolyline = function(d) {
 
 	console.log('handlePolyline',d);
@@ -182,7 +253,7 @@ Dxf.prototype.handlePolyline = function(d) {
 	// keep track of the first layer name
 	var gotFirstLayerName = false;
 
-	// now loop through each of the lines for the polyine
+	// now loop through each of the lines for the polyline
 	for (var c = 0; c < d.lines.length; c++) {
 
 		if (d.lines[c].match(/ 8/) && gotFirstLayerName == false) {
@@ -485,32 +556,3 @@ Dxf.prototype.parseDxf = function(d) {
 	console.log(this);
 
 };
-
-/*
-var fs = require('fs');
-
-var dxf = new Dxf();
-
-fs.readFile('../oshw.dxf', function(e, d) {
-	dxf.parseDxf(d);
-	var s = 'var tool = {units:"mm",diameter:6.35,passDepth:4,step:1,rapid:2000,plunge:100,cut:600,zClearance:5,returnHome:true};\n';
-
-	s += '// setup a new Millcrum object with that tool\nvar mc = new Millcrum(tool);\n';
-	s += '// set the surface dimensions for the viewer\nmc.surface('+(dxf.width*1.5)+','+(dxf.height*1.5)+');\n';
-
-	for (var c=0; c<dxf.polylines.length; c++) {
-		var wtf = dxf.polylines[c].layer;
-		s += '\n//LAYER '+wtf+'\n';
-		s += 'var polyline'+c+' = {type:\'polygon\',name:\''+wtf+'\',points:[';
-		for (var p=0; p<dxf.polylines[c].points.length; p++) {
-			s += '['+dxf.polylines[c].points[p][0]+','+dxf.polylines[c].points[p][1]+'],';
-		}
-
-		s += ']};\nmc.cut(\'centerOnPath\', polyline'+c+', 4, [0,0]);\n';
-	}
-
-	s += '\nmc.get();\n';
-	console.log(s);
-
-});
-*/

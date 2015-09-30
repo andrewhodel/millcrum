@@ -141,6 +141,7 @@ addLoadEvent(function() {
 			s += '// setup a new Millcrum object with that tool\nvar mc = new Millcrum(tool);\n';
 			s += '// set the surface dimensions for the viewer\nmc.surface('+(dxf.width*1.5)+','+(dxf.height*1.5)+');\n';
 
+			// convert polylines to millcrum
 			for (var c=0; c<dxf.polylines.length; c++) {
 				var wtf = dxf.polylines[c].layer;
 				s += '\n//LAYER '+wtf+'\n';
@@ -150,6 +151,15 @@ addLoadEvent(function() {
 				}
 
 				s += ']};\nmc.cut(\'centerOnPath\', polyline'+c+', 4, [0,0]);\n';
+			}
+
+			// convert lines to millcrum
+			for (var c=0; c<dxf.lines.length; c++) {
+				s += 'var line'+c+' = {type:\'polygon\',name:\'line'+c+'\',points:[';
+				s += '['+dxf.lines[c][0]+','+dxf.lines[c][1]+'],';
+				s += '['+dxf.lines[c][3]+','+dxf.lines[c][4]+'],';
+
+				s += ']};\nmc.cut(\'centerOnPath\', line'+c+', 4, [0,0]);\n';
 			}
 
 			s += '\nmc.get();\n';
@@ -214,7 +224,7 @@ addLoadEvent(function() {
 			}, 500);
 
 			window.setTimeout(function() {
-				alertD.style.backgroundColor = 'red';
+				alertD.style.backgroundColor = '#ff4d4d';
 			}, 1000);
 		} else {
 			// just append text
