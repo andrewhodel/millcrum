@@ -3,12 +3,13 @@
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Millcrum - Parametric 2.5D GCODE Generator</title>
-<link rel="stylesheet" href="screen.css" />
-<script type="text/javascript" src="init.js"></script>
-<script type="text/javascript" src="canvas.js"></script>
-<script type="text/javascript" src="mc.js"></script>
-<script type="text/javascript" src="dxf.js"></script>
-<script type="text/javascript" src="ea/edit_area_full.js"></script>
+<link rel="stylesheet" href="inc/screen.css" />
+<link rel="stylesheet" href="inc/docco-highlight.min.css" />
+<script type="text/javascript" src="inc/init.js"></script>
+<script type="text/javascript" src="inc/canvas.js"></script>
+<script type="text/javascript" src="inc/mc.js"></script>
+<script type="text/javascript" src="inc/dxf.js"></script>
+<script type="text/javascript" src="inc/highlight.min.js"></script>
 </head>
 
 <body style="background-color: #ddd;">
@@ -36,7 +37,7 @@
 
 	</div> <!-- end left buttons -->
 
-	<textarea id="millcrumCode" style="width: 100%; min-height: 400px;"></textarea>
+	<pre onfocus="this.parentNode.draggable = false;" onblur="this.parentNode.draggable = true;" contenteditable="true" id="millcrumCode" style="width: 670px; height: 400px; clear: both; background-color: #fff; white-space: pre; overflow: auto;"></pre>
 
 	<div style="float: right; text-align: right;"> <!-- bottom right buttons -->
 

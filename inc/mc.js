@@ -567,8 +567,7 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, reverse) {
 		// move anything before safeStartingPoint to the end of the path
 		var newEnd = cp.slice(0,safeStartingPoint);
 		var newStart = cp.slice(safeStartingPoint);
-		var tcp = Array.concat(newStart,newEnd);
-		basePath = tcp;
+		basePath = [].concat(newStart,newEnd);
 
 	} else {
 

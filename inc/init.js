@@ -12,6 +12,31 @@ function addLoadEvent(func) {
   }
 }
 
+function getCaretPosition(editableDiv) {
+  var caretPos = 0,
+    sel, range;
+  if (window.getSelection) {
+    sel = window.getSelection();
+    if (sel.rangeCount) {
+      range = sel.getRangeAt(0);
+      if (range.commonAncestorContainer.parentNode == editableDiv) {
+        caretPos = range.endOffset;
+      }
+    }
+  } else if (document.selection && document.selection.createRange) {
+    range = document.selection.createRange();
+    if (range.parentElement() == editableDiv) {
+      var tempEl = document.createElement("span");
+      editableDiv.insertBefore(tempEl, editableDiv.firstChild);
+      var tempRange = range.duplicate();
+      tempRange.moveToElementText(tempEl);
+      tempRange.setEndPoint("EndToEnd", range);
+      caretPos = tempRange.text.length;
+    }
+  }
+  return caretPos;
+}
+
 var toSaveGcode = '';
 var clickPaths = [];
 
@@ -44,15 +69,13 @@ addLoadEvent(function() {
 
         });
 
-	// init edit_area
-	editAreaLoader.init({id:'millcrumCode',start_highlight:true,allow_resize:'both',toolbar:'undo, redo, select_font, reset_highlight',word_wrap:false,language:'en',syntax:'js'});
-
 	// setup elements
 	var generate = document.getElementById('generate');
 	var sgc = document.getElementById('saveGcode');
 	var smc = document.getElementById('saveMillcrum');
 	var omc = document.getElementById('openMillcrum');
 	var odxf = document.getElementById('openDxf');
+	var millcrumCode = document.getElementById('millcrumCode');
 
 	var pathInfo = document.getElementById('pathInfo');
 	var pathInfoText = document.getElementById('pathInfoText');
@@ -66,6 +89,19 @@ addLoadEvent(function() {
 	var examples = document.getElementById('examples');
 	var examplesLink = document.getElementById('examplesLink');
 
+	// update highlightjs when millcrumCode is edited
+	millcrumCode.addEventListener('keyup', function(e) {
+
+		// this has to be worked on by getting the caret position
+		// serializing the code, adding the new text at that position
+		// re-formatting, then re-displaying
+		// for now the edited code is just not formatted
+		// rangy is an example on github
+		// also need to fix chrome not properly (they argue about it based on the rfc but it even says different things)
+		// showing pre-formatted text, chrome inserts newlines arbitrarily based on element width
+
+	});
+
 	// handle examples
 	var ex = document.getElementsByClassName("example");
 	for (var i=0; i<ex.length; i++) {
@@ -78,7 +114,7 @@ addLoadEvent(function() {
 
 			r.onreadystatechange = function() {
 				if (r.readyState == 4 && r.status == 200) {
-					editAreaLoader.setValue('millcrumCode', r.responseText);
+					millcrumCode.innerHTML = hljs.highlight('javascript',r.responseText).value;
 					generate.click();
 				}
 			}
@@ -123,7 +159,7 @@ addLoadEvent(function() {
 
 	// save .millcrum
 	smc.addEventListener('click', function() {
-		var blob = new Blob([editAreaLoader.getValue('millcrumCode')], {type: 'text/plain;charset=utf-8'});
+		var blob = new Blob([millcrumCode.textContent || millcrumCode.innerText], {type: 'text/plain;charset=utf-8'});
 		saveAs(blob, 'output.millcrum');
 	});
 
@@ -136,21 +172,20 @@ addLoadEvent(function() {
 			var dxf = new Dxf();
 
 			dxf.parseDxf(r.result);
-			var s = 'var tool = {units:"mm",diameter:6.35,passDepth:4,step:1,rapid:2000,plunge:100,cut:600,zClearance:5,returnHome:true};\n';
+			var s = 'var tool = {units:"mm",diameter:6.35,passDepth:4,step:1,rapid:2000,plunge:100,cut:600,zClearance:5,returnHome:true};\n\n';
 
-			s += '// setup a new Millcrum object with that tool\nvar mc = new Millcrum(tool);\n';
-			s += '// set the surface dimensions for the viewer\nmc.surface('+(dxf.width*1.5)+','+(dxf.height*1.5)+');\n';
+			s += '// setup a new Millcrum object with that tool\nvar mc = new Millcrum(tool);\n\n';
+			s += '// set the surface dimensions for the viewer\nmc.surface('+(dxf.width*1.5)+','+(dxf.height*1.5)+');\n\n';
 
 			// convert polylines to millcrum
 			for (var c=0; c<dxf.polylines.length; c++) {
-				var wtf = dxf.polylines[c].layer;
-				s += '\n//LAYER '+wtf+'\n';
-				s += 'var polyline'+c+' = {type:\'polygon\',name:\''+wtf+'\',points:[';
+				s += '\n//LAYER '+dxf.polylines[c].layer+'\n';
+				s += 'var polyline'+c+' = {type:\'polygon\',name:\''+dxf.polylines[c].layer+'\',points:[';
 				for (var p=0; p<dxf.polylines[c].points.length; p++) {
 					s += '['+dxf.polylines[c].points[p][0]+','+dxf.polylines[c].points[p][1]+'],';
 				}
 
-				s += ']};\nmc.cut(\'centerOnPath\', polyline'+c+', 4, [0,0]);\n';
+				s += ']};\nmc.cut(\'centerOnPath\', polyline'+c+', 4, [0,0]);\n\n';
 			}
 
 			// convert lines to millcrum
@@ -159,13 +194,13 @@ addLoadEvent(function() {
 				s += '['+dxf.lines[c][0]+','+dxf.lines[c][1]+'],';
 				s += '['+dxf.lines[c][3]+','+dxf.lines[c][4]+'],';
 
-				s += ']};\nmc.cut(\'centerOnPath\', line'+c+', 4, [0,0]);\n';
+				s += ']};\nmc.cut(\'centerOnPath\', line'+c+', 4, [0,0]);\n\n';
 			}
 
-			s += '\nmc.get();\n';
+			s += 'mc.get();\n';
 
 			// load the new millcrum code
-			editAreaLoader.setValue('millcrumCode',s);
+			millcrumCode.innerHTML = hljs.highlight('javascript',s).value;
 			// convert the .millcrum to gcode
 			generate.click();
 		}
@@ -177,7 +212,7 @@ addLoadEvent(function() {
 		r.readAsText(omc.files[0]);
 		r.onload = function(e) {
 			// load the file
-			editAreaLoader.setValue('millcrumCode',r.result);
+			millcrumCode.innerHTML = hljs.highlight('javascript',r.result).value;
 			// convert the .millcrum to gcode
 			generate.click();
 		}
@@ -188,7 +223,13 @@ addLoadEvent(function() {
 
 	drag.addEventListener('dragstart', function(e) {
 		var style = window.getComputedStyle(e.target, null);
-		e.dataTransfer.setData('text/plain', (parseInt(style.getPropertyValue('left'),10) - e.clientX) + ',' + (parseInt(style.getPropertyValue('top'),10) - e.clientY));
+		if (parseInt(style.getPropertyValue('top'),10) - e.clientY > -40) {
+			// only allow dragging the window from the top bar
+			e.dataTransfer.setData('text/plain', (parseInt(style.getPropertyValue('left'),10) - e.clientX) + ',' + (parseInt(style.getPropertyValue('top'),10) - e.clientY));
+		} else {
+			return false;
+		}
+
 	});
 
 	document.body.addEventListener('dragover', function(e) {
@@ -241,8 +282,9 @@ addLoadEvent(function() {
 		// reset clickPaths
 		clickPaths = [];
 
-		// with edit_area you have to use this to get the textarea contents
-		var mcCode = editAreaLoader.getValue('millcrumCode');
+		// this gets the text (no html nodes so no formatting) of the millcrum code
+		var mcCode = millcrumCode.textContent || millcrumCode.innerText;
+
 		try {
 			eval(mcCode);
 		} catch (e) {
