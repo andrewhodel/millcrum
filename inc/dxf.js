@@ -92,7 +92,7 @@ Dxf.prototype.calcBulgeCenter = function(p1,p2) {
 
 Dxf.prototype.handleHeader = function(d) {
 
-	console.log('handleHeader',d);
+	//console.log('handleHeader',d);
 
 	// loop through the header and pull out info we want
 	for (var c=0; c<d.length; c++) {
@@ -108,7 +108,7 @@ Dxf.prototype.handleHeader = function(d) {
 
 Dxf.prototype.handleEntities = function(d) {
 
-	console.log('handleEntities',d);
+	//console.log('handleEntities',d);
 
 	// each entity starts with '  0' then the next line is the type of entity
 	var currentEntity = {type:'',lines:[]};
@@ -171,13 +171,13 @@ Dxf.prototype.handleEntities = function(d) {
 		}
 	}
 
-	console.log(totalEntities + ' total entities');
+	//console.log(totalEntities + ' total entities');
 
 };
 
 Dxf.prototype.handleLine = function(d) {
 
-	console.log('handleLine',d);
+	//console.log('handleLine',d);
 
 	var thisLine = [0,0,0,0,0,0];
 
@@ -243,7 +243,7 @@ Dxf.prototype.handleLine = function(d) {
 
 Dxf.prototype.handlePolyline = function(d) {
 
-	console.log('handlePolyline',d);
+	//console.log('handlePolyline',d);
 
 	var singleEntity = {layer:'',points:[]};
 
@@ -271,7 +271,7 @@ Dxf.prototype.handlePolyline = function(d) {
 			// if the type is polyline then the first coordinate is the offset, so we can skip it (strange)
 			if (d.type == 'polyline' && currentCoord == -1) {
 				// skip it
-				console.log('skipping first point for polyline');
+				//console.log('skipping first point for polyline');
 			} else {
 				// inc the currentCoord
 				currentCoord++;
@@ -290,16 +290,16 @@ Dxf.prototype.handlePolyline = function(d) {
 
 	}
 
-	console.log('polyline singleEntity',singleEntity);
+	//console.log('polyline singleEntity',singleEntity);
 
 	if (singleEntity.points.length == 0) {
 		// this has no points, go on to the next
-		console.log('polyline has no points');
+		//console.log('polyline has no points');
 		return true;
 	}
 
 	// now for this polyline we need to process it
-	console.log('processing polyline');
+	//console.log('processing polyline');
 
 	// loop through each point in polygon to update the min and max
 	// values for the whole dxf
@@ -538,7 +538,7 @@ Dxf.prototype.parseDxf = function(d) {
 	// now go through each section and send each to the correct handler
 	for (var c = 0; c<sections.length; c++) {
 
-		console.log('section #'+c,sections[c]);
+		//console.log('section #'+c,sections[c]);
 
 		// right now we just get the header and entities, and even the header isn't used that often
 		if (sections[c][1].match(/header/)) {
@@ -553,6 +553,6 @@ Dxf.prototype.parseDxf = function(d) {
 	this.width = this.maxPoint[0] - this.minPoint[0];
 	this.height = this.maxPoint[1] - this.minPoint[1];
 
-	console.log(this);
+	//console.log(this);
 
 };
