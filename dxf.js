@@ -1,6 +1,6 @@
 var Dxf = function() {
 	this.layers = [];
-	this.polygons = [];
+	this.polylines = [];
 	this.minPoint = [0,0];
 	this.maxPoint = [0,0];
 	this.width = 0;
@@ -87,7 +87,354 @@ Dxf.prototype.calcBulgeCenter = function(p1,p2) {
 
 	return c;
 
-}
+};
+
+Dxf.prototype.handleHeader = function(d) {
+
+	console.log('handleHeader',d);
+
+	// loop through the header and pull out info we want
+	for (var c=0; c<d.length; c++) {
+		if (d[c] == '$acadver') {
+			console.log('autocad drawing database version '+d[c+1]);
+			// no need to continue parsing the header until we want more data
+			// some editors don't even include a header section!
+			break;
+		}
+	}
+
+};
+
+Dxf.prototype.handleEntities = function(d) {
+
+	console.log('handleEntities',d);
+
+	// each entity starts with '  0' then the next line is the type of entity
+	var currentEntity = {type:'',lines:[]};
+
+	var entitiesToKeep = ['lwpolyline','polyline'];
+
+	var totalEntities = 0;
+
+	// loop through all of the entities lines
+	for (var c=0; c<d.length; c++) {
+
+		if (d[c] == '  0') {
+
+			// if the next line is undefined then there are no more entities
+			if (typeof(d[c+1] != 'undefined')) {
+
+				var isValid = false;
+
+				// now we can see if this entity is one we want to process
+				for (var i=0; i<entitiesToKeep.length; i++) {
+					if (entitiesToKeep[i] == d[c+1]) {
+						// this is a keeper
+						//console.log('found keeper entity '+d[c+1]);
+						currentEntity = {type:d[c+1], lines:[]};
+
+						c++;
+
+						// loop through the next lines until the next '  0'
+						while (d[c] != '  0') {
+
+							// add line to currentEntity.lines
+							currentEntity.lines.push(d[c]);
+
+							// increment entities line counter
+							c++;
+						}
+
+						// need to decrement the line counter by one so not to skip every other entity
+						c--;
+
+						// send to entity handler for this type
+						this.handlePolyline(currentEntity);
+						totalEntities++;
+
+						isValid = true;
+
+					}
+				}
+
+				if (!isValid) {
+					doAlert('DXF ERROR: found invalid entity with type '+d[c+1]+' only lwpolyline and polyline supported\n');
+				}
+
+			}
+
+		}
+	}
+
+	console.log(totalEntities + ' total entities');
+
+};
+
+Dxf.prototype.handlePolyline = function(d) {
+
+	console.log('handlePolyline',d);
+
+	var singleEntity = {layer:'',points:[]};
+
+	// keep track of what coord we are in within this entity
+	var currentCoord = -1;
+
+	// keep track of the first layer name
+	var gotFirstLayerName = false;
+
+	// now loop through each of the lines for the polyine
+	for (var c = 0; c < d.lines.length; c++) {
+
+		if (d.lines[c].match(/ 8/) && gotFirstLayerName == false) {
+			// the first ' 8' means the next line will be the layer name
+			// sometimes there is a '  8' and sometimes a ' 8' so we need to match on ' 8' which will get '  8'
+			// for some reason there are sometimes with some editors multiple of them
+			// the first one is the one that matters
+			c++;
+			singleEntity.layer = d.lines[c];
+			gotFirstLayerName = true;
+		} else if (d.lines[c] == ' 10') {
+			// this means the next line will be the X coordinate of a point
+
+			// if the type is lwpolyline then the first coordinate is the first coordinate
+			// if the type is polyline then the first coordinate is the offset, so we can skip it (strange)
+			if (d.type == 'polyline' && currentCoord == -1) {
+				// skip it
+				console.log('skipping first point for polyline');
+			} else {
+				// inc the currentCoord
+				currentCoord++;
+				c++;
+				singleEntity.points.push([Number(d.lines[c])]);
+			}
+		} else if (d.lines[c] == ' 20' && currentCoord > -1) {
+			// this means the next line will be the Y coordinate of a point
+			c++;
+			singleEntity.points[currentCoord].push(Number(d.lines[c]));
+		} else if (d.lines[c] == ' 42' && currentCoord > -1) {
+			// this means the next line will be the curve value
+			c++;
+			singleEntity.points[currentCoord].push(Number(d.lines[c]));
+		}
+
+	}
+
+	console.log('polyline singleEntity',singleEntity);
+
+	if (singleEntity.points.length == 0) {
+		// this has no points, go on to the next
+		console.log('polyline has no points');
+		return true;
+	}
+
+	// now for this polyline we need to process it
+	console.log('processing polyline');
+
+	// loop through each point in polygon to update the min and max
+	// values for the whole dxf
+	for (var i=0; i<singleEntity.points.length-1; i++) {
+		var p1 = singleEntity.points[i];
+
+		// for x
+		if (p1[0] > this.maxPoint[0]) {
+			this.maxPoint[0] = p1[0];
+		} else if (p1[0] < this.minPoint[0]) {
+			this.minPoint[0] = p1[0];
+		}
+
+		// for y
+		if (p1[1] > this.maxPoint[1]) {
+			this.maxPoint[1] = p1[1];
+		} else if (p1[1] < this.minPoint[1]) {
+			this.minPoint[1] = p1[1];
+		}
+
+	}
+
+	// loop through each point in polygon again to calculate the bulges
+	var newPoints = [];
+
+	for (var i=0; i<singleEntity.points.length-1; i++) {
+		var p1 = singleEntity.points[i];
+		var p2 = singleEntity.points[i+1];
+
+		// temp for displaying points later
+		var thisLoopPoints = [];
+
+		/*
+		console.log('\nPOINT LOOP #'+i+' for '+singleEntity.layer);
+		console.log('p1',p1);
+		console.log('p2',p2);
+		console.log('cv',cv);
+		*/
+
+		if (p1[0] == p2[0] && p1[1] == p2[1]) {
+			// the points are the exact same
+
+		} else {
+			// the points are different
+
+			if (typeof(p1[2]) != 'undefined') {
+				// there is a bulge, get the center point
+				var cv = this.calcBulgeCenter(p1, p2);
+
+				if (false) {
+					// the bulge point are on the same line, stupid editor
+					// just add the points
+					newPoints.push(p1,p2);
+				} else {
+					// this is a proper curve point, calculate it
+
+					// radius between p1 and cv
+					var r = this.distanceFormula(p1, cv);
+					var startPointQuad = 0;
+					var endPointQuad = 0;
+					var startAng = 0;
+					var endAng = 0;
+
+					//
+					//   2   |   1
+					//       |
+					// ------|-------
+					//       |
+					//   3   |   4
+					//
+					// first find start point quadrant relative to cv
+					// and end point quadrant relative to cv
+
+					// start point
+					if (p1[0] > cv[0] && p1[1] > cv[1]) {
+						startPointQuad = 1;
+					} else if (p1[0] < cv[0] && p1[1] > cv[1]) {
+						startPointQuad = 2;
+					} else if (p1[0] < cv[0] && p1[1] < cv[1]) {
+						startPointQuad = 3;
+					} else if (p1[0] > cv[0] && p1[1] < cv[1]) {
+						startPointQuad = 4;
+					}
+
+					// end point
+					if (p2[0] > cv[0] && p2[1] > cv[1]) {
+						endPointQuad = 1;
+					} else if (p2[0] < cv[0] && p2[1] > cv[1]) {
+						endPointQuad = 2;
+					} else if (p2[0] < cv[0] && p2[1] < cv[1]) {
+						endPointQuad = 3;
+					} else if (p2[0] > cv[0] && p2[1] < cv[1]) {
+						endPointQuad = 4;
+					}
+
+					// start angle from cv to p1
+					var startSlope = (cv[1] - p1[1]) / (cv[0] - p1[0]);
+					var startAng = 180 * Math.atan(startSlope) / Math.PI;
+					if (p1[2] >= 0) {
+						// positive curve
+						if (startPointQuad == 2) {
+							startAng = 180 + startAng;
+						} else if (startPointQuad == 3) {
+							startAng = 180 + startAng;
+						} else if (startPointQuad == 4) {
+							startAng = 360 + startAng;
+						}
+					} else {
+						// negative curve
+						if (startPointQuad == 2) {
+							startAng = 180 + startAng;
+						} else if (startPointQuad == 3) {
+							startAng = 180 + startAng;
+						} else if (startPointQuad == 4) {
+							startAng = 360 + startAng;
+						}
+					}
+
+					// end angle from cv to p2
+					var endSlope = (cv[1] - p2[1]) / (cv[0] - p2[0]);
+					var endAng = 180 * Math.atan(endSlope) / Math.PI;
+					if (p1[2] < 0) {
+						// negative curve
+						if (endPointQuad == 2) {
+							endAng = 180 + endAng;
+						} else if (endPointQuad == 3) {
+							endAng = 180 + endAng;
+						} else if (endPointQuad == 4) {
+							endAng = 360 + endAng;
+						}
+					} else {
+						// positive curve
+						if (endPointQuad == 2) {
+							endAng = 180 + endAng;
+						} else if (endPointQuad == 3) {
+							endAng = 180 + endAng;
+						} else if (endPointQuad == 4) {
+							endAng = 360 + endAng;
+						}
+					}
+
+					if (p1[2] < 0) {
+						// this is a negative curve so it will be an arc that goes from p1 to p2 except
+						// it will be bulging toward the cv point and not away from it like normal
+						var arcTotalDeg = 360 - this.addDegrees(endAng, -startAng);
+					} else {
+						var arcTotalDeg = this.addDegrees(endAng, -startAng);
+					}
+
+					// now we need to create the line segments in the arc
+					var numSegments = 40;
+					var degreeStep = arcTotalDeg / numSegments;
+
+					// now loop through each degreeStep
+					for (var a=1; a<numSegments+1; a++) {
+						// for a positive curve the start point is always a lower number of degrees
+						if (p1[2] < 0) {
+							// for a negative curve we need to subtract degreeStep
+							var pt = this.newPointFromDistanceAndAngle(cv, this.addDegrees(startAng, -(degreeStep * a)), r);
+						} else {
+							// for a positive curve we add degreeStep
+							var pt = this.newPointFromDistanceAndAngle(cv, this.addDegrees(startAng, (degreeStep * a)), r);
+						}
+						// add the point
+						newPoints.push(pt);
+						thisLoopPoints.push(pt);
+					}
+
+					p1 = thisLoopPoints[0];
+					p2 = thisLoopPoints[thisLoopPoints.length-1];
+
+				}
+
+
+			} else {
+				// line segment without curve, add it
+				newPoints.push(p1,p2);
+			}
+
+		}
+
+		/*
+		console.log('startAng',startAng);
+		console.log('endAng',endAng);
+		console.log('startPointQuad',startPointQuad);
+		console.log('endPointQuad',endPointQuad);
+		console.log('thisLoopPoints ' + thisLoopPoints.length);
+		*/
+
+
+/*
+		for (var nn=0; nn<thisLoopPoints.length; nn++) {
+			console.log(nn,thisLoopPoints[nn]);
+		}
+*/
+
+		//console.log('POINT LOOP #'+i+' '+thisLoopPoints.length,p1,p2);
+
+	}
+
+	//console.log('POINTS AFTER PROCESSING',newPoints.length);
+
+	// set newPoints as this polygons points
+	this.polylines.push({layer:singleEntity.layer,points:newPoints});
+
+};
 
 Dxf.prototype.parseDxf = function(d) {
 
@@ -96,298 +443,46 @@ Dxf.prototype.parseDxf = function(d) {
 	// first we need to split the file up into newlines
 	var l = String(d).split('\n');
 
-	var n = 0, next = false, min_x, min_y, vt_pid_bool = false, cur_pid = 0, acDbPolyline_bool = false, acDbEntity = false, caughtDbEntry = false, cur_acDbEntity = "", caughtX = false, caughtY = false, bulge_bool = false;
-	var unusedGroupCodes = [90,70,34,38,39,40,41,210,220,230];
-	var skipUnused = true;
+	var sections = [];
+	var currentSection = [];
 
-	// main loop to parse through the lines
+	console.log('parsing dxf sections');
+
+	// first loop through and find all the sections
 	for (var c = 0; c < l.length; c++) {
 
-		// dxf entity blocks
-		if (l[c].match(/ENDBLK/) || l[c].match(/ENDSEC/)) {
-			acDbPolyline_bool = false;
-			acDbEntity = false;
-		} else if (l[c].match(/AcDbEntity/)) {
-			if (acDbEntity === true) {
-				// if we are getting this again and it's already true, need another
-				acDbPolyline_bool = false;
-			}
-			
-			acDbEntity = true;
-		} else if (acDbEntity === true && l[c].replace(' ', '') == 8) {
-			caughtDbEntry = true;
-		} else if (acDbEntity === true && caughtDbEntry === true) {
-			caughtDbEntry = false;
-			cur_acDbEntity = l[c];
+		if (l[c].toLowerCase().match(/section/)) {
+			// this starts a section, add a new section object
+			currentSection = [];
+		} else if (l[c].toLowerCase().match(/endsec/)) {
+			// this ends a section, move currentSection into sections
+			sections.push(currentSection);
+		} else {
+			// this is something to be inserted into currentSection
+			// also remove any newline characters from the end of the string
+			currentSection.push(l[c].toLowerCase().replace(/(\r\n|\n|\r)/gm,''));
+		}
+	}
 
-		// polygon
-		} else if (cur_acDbEntity != '' && l[c].match(/AcDbPolyline/)) {
+	// now go through each section and send each to the correct handler
+	for (var c = 0; c<sections.length; c++) {
 
-			acDbPolyline_bool = true;
-			// add a polygon
-			this.polygons.push({layer: cur_acDbEntity.trim(), points: []});
-		} else if (acDbPolyline_bool === true && unusedGroupCodes.indexOf(Number(l[c])) > -1) {
-			// this is an unused group code, we can disregard this and the next line
-			skipUnused = true;
-		} else if (acDbPolyline_bool === true && skipUnused === true) {
-			skipUnused = false;
-		} else if (acDbPolyline_bool === true && l[c].replace(' ', '') == 10) {
-			caughtX = true;
-		} else if (acDbPolyline_bool === true && caughtX === true) {
+		console.log('section #'+c,sections[c]);
 
-			caughtX = false;
-			// got the first X coordinate of this XY pair, add it to points
-			this.polygons[this.polygons.length - 1].points.push([Number(l[c])]);
-
-		} else if (acDbPolyline_bool === true && l[c].replace(' ', '') == 20) {
-			caughtY = true;
-		} else if (acDbPolyline_bool === true && caughtY === true) {
-			caughtY = false;
-			if (this.polygons[this.polygons.length - 1].points.length) {
-				// got the Y coordinate for this XY pair
-				this.polygons[this.polygons.length - 1].points[this.polygons[this.polygons.length - 1].points.length - 1].push(Number(l[c]));
-			}
-		} else if (acDbPolyline_bool === true && l[c].replace(' ', '') == 42) {
-			// this vertex has a bulge
-			bulge_bool = true;
-		} else if (acDbPolyline_bool === true && bulge_bool === true) {
-			// add bulge as third item in points array
-			if (this.polygons[this.polygons.length - 1].points.length) {
-				this.polygons[this.polygons.length - 1].points[this.polygons[this.polygons.length - 1].points.length - 1].push(Number(l[c]));
-			}
-			bulge_bool = false;
-		} else if (acDbPolyline_bool === true && l[c].match(/ENDBLK/)) {
-			// reset the indicators for polyline entity
-			acDbPolyline_bool = false;
-			acDbEntity = false;
-
-		// ENDBLK
-		} else if (l[c].match(/ENDBLK/)) {
-			acDbEntity = false;
+		// right now we just get the header and entities, and even the header isn't used that often
+		if (sections[c][1].match(/header/)) {
+			this.handleHeader(sections[c]);
+		} else if (sections[c][1].match(/entities/)) {
+			this.handleEntities(sections[c]);
 		}
 
 	}
 
-	// init min and this.maxPoint with the first values in the first polygon
-	this.minPoint[0] = this.polygons[0].points[0][0];
-	this.minPoint[1] = this.polygons[0].points[0][1];
-	this.maxPoint[0] = this.polygons[0].points[0][0];
-	this.maxPoint[1] = this.polygons[0].points[0][1];
-
-	// now we loop through the polygons
-	for (var c=0; c<this.polygons.length; c++) {
-		var polygon = this.polygons[c];
-
-		//console.log('\n\n\n\nLAYER',polygon.layer);
-		//console.log('POINTS BEFORE PROCESSING',polygon.points.length);
-
-		// loop through each point in polygon for the min and max values
-		for (var i=0; i<polygon.points.length-1; i++) {
-			var p1 = polygon.points[i];
-
-			// for x
-			if (p1[0] > this.maxPoint[0]) {
-				this.maxPoint[0] = p1[0];
-			} else if (p1[0] < this.minPoint[0]) {
-				this.minPoint[0] = p1[0];
-			}
-
-			// for y
-			if (p1[1] > this.maxPoint[1]) {
-				this.maxPoint[1] = p1[1];
-			} else if (p1[1] < this.minPoint[1]) {
-				this.minPoint[1] = p1[1];
-			}
-
-		}
-
-		// loop through each point in polygon again to calculate the bulges
-		var newPoints = [];
-
-		for (var i=0; i<polygon.points.length-1; i++) {
-			var p1 = polygon.points[i];
-			var p2 = polygon.points[i+1];
-
-			// temp for displaying points later
-			var thisLoopPoints = [];
-
-			/*
-			console.log('\nPOINT LOOP #'+i+' for '+polygon.layer);
-			console.log('p1',p1);
-			console.log('p2',p2);
-			console.log('cv',cv);
-			*/
-
-			if (p1[0] == p2[0] && p1[1] == p2[1]) {
-				// the points are the exact same
-
-			} else {
-				// the points are different
-
-				if (typeof(p1[2]) != 'undefined') {
-					// there is a bulge, get the center point
-					var cv = this.calcBulgeCenter(p1, p2);
-
-					if (false) {
-						// the bulge point are on the same line, stupid editor
-						// just add the points
-						newPoints.push(p1,p2);
-					} else {
-						// this is a proper bulge point, calculate it
-
-						// radius between p1 and cv
-						var r = this.distanceFormula(p1, cv);
-						var startPointQuad = 0;
-						var endPointQuad = 0;
-						var startAng = 0;
-						var endAng = 0;
-
-						//
-						//   2   |   1
-						//       |
-						// ------|-------
-						//       |
-						//   3   |   4
-						//
-						// first find start point quadrant relative to cv
-						// and end point quadrant relative to cv
-
-						// start point
-						if (p1[0] > cv[0] && p1[1] > cv[1]) {
-							startPointQuad = 1;
-						} else if (p1[0] < cv[0] && p1[1] > cv[1]) {
-							startPointQuad = 2;
-						} else if (p1[0] < cv[0] && p1[1] < cv[1]) {
-							startPointQuad = 3;
-						} else if (p1[0] > cv[0] && p1[1] < cv[1]) {
-							startPointQuad = 4;
-						}
-
-						// end point
-						if (p2[0] > cv[0] && p2[1] > cv[1]) {
-							endPointQuad = 1;
-						} else if (p2[0] < cv[0] && p2[1] > cv[1]) {
-							endPointQuad = 2;
-						} else if (p2[0] < cv[0] && p2[1] < cv[1]) {
-							endPointQuad = 3;
-						} else if (p2[0] > cv[0] && p2[1] < cv[1]) {
-							endPointQuad = 4;
-						}
-
-						// start angle from cv to p1
-						var startSlope = (cv[1] - p1[1]) / (cv[0] - p1[0]);
-						var startAng = 180 * Math.atan(startSlope) / Math.PI;
-						if (p1[2] >= 0) {
-							// positive bulge
-							if (startPointQuad == 2) {
-								startAng = 180 + startAng;
-							} else if (startPointQuad == 3) {
-								startAng = 180 + startAng;
-							} else if (startPointQuad == 4) {
-								startAng = 360 + startAng;
-							}
-						} else {
-							// negative bulge
-							if (startPointQuad == 2) {
-								startAng = 180 + startAng;
-							} else if (startPointQuad == 3) {
-								startAng = 180 + startAng;
-							} else if (startPointQuad == 4) {
-								startAng = 360 + startAng;
-							}
-						}
-
-						// end angle from cv to p2
-						var endSlope = (cv[1] - p2[1]) / (cv[0] - p2[0]);
-						var endAng = 180 * Math.atan(endSlope) / Math.PI;
-						if (p1[2] < 0) {
-							// negative bulge
-							if (endPointQuad == 2) {
-								endAng = 180 + endAng;
-							} else if (endPointQuad == 3) {
-								endAng = 180 + endAng;
-							} else if (endPointQuad == 4) {
-								endAng = 360 + endAng;
-							}
-						} else {
-							// positive bulge
-							if (endPointQuad == 2) {
-								endAng = 180 + endAng;
-							} else if (endPointQuad == 3) {
-								endAng = 180 + endAng;
-							} else if (endPointQuad == 4) {
-								endAng = 360 + endAng;
-							}
-						}
-
-						if (p1[2] < 0) {
-							// this is a negative bulge so it will be an arc that goes from p1 to p2 except
-							// it will be bulging toward the cv point and not away from it like normal
-							var arcTotalDeg = 360 - this.addDegrees(endAng, -startAng);
-						} else {
-							var arcTotalDeg = this.addDegrees(endAng, -startAng);
-						}
-
-						// now we need to create the line segments in the arc
-						var numSegments = 40;
-						var degreeStep = arcTotalDeg / numSegments;
-
-						// now loop through each degreeStep
-						for (var a=1; a<numSegments+1; a++) {
-							// for a positive bulge the start point is always a lower number of degrees
-							if (p1[2] < 0) {
-								// for a negative bulge we need to subtract degreeStep
-								var pt = this.newPointFromDistanceAndAngle(cv, this.addDegrees(startAng, -(degreeStep * a)), r);
-							} else {
-								// for a positive bulge we add degreeStep
-								var pt = this.newPointFromDistanceAndAngle(cv, this.addDegrees(startAng, (degreeStep * a)), r);
-							}
-							// add the point
-							newPoints.push(pt);
-							thisLoopPoints.push(pt);
-						}
-
-						p1 = thisLoopPoints[0];
-						p2 = thisLoopPoints[thisLoopPoints.length-1];
-
-					}
-
-
-				} else {
-					// line segment without bulge, add it
-					newPoints.push(p1,p2);
-				}
-
-			}
-
-/*
-			console.log('startAng',startAng);
-			console.log('endAng',endAng);
-			console.log('startPointQuad',startPointQuad);
-			console.log('endPointQuad',endPointQuad);
-			console.log('thisLoopPoints ' + thisLoopPoints.length);
-*/
-
-/*
-			for (var nn=0; nn<thisLoopPoints.length; nn++) {
-				console.log(nn,thisLoopPoints[nn]);
-			}
-*/
-
-			//console.log('POINT LOOP #'+i+' '+thisLoopPoints.length,p1,p2);
-
-		}
-
-		// set newPoints as this polygons points
-		this.polygons[c].points = newPoints;
-
-		//console.log('POINTS AFTER PROCESSING',newPoints.length);
-
-	}
-
-	// set width and height
+	// set dxf width and height now that all entities are processed
 	this.width = this.maxPoint[0] - this.minPoint[0];
 	this.height = this.maxPoint[1] - this.minPoint[1];
+
+	console.log(this);
 
 };
 
@@ -403,15 +498,15 @@ fs.readFile('../oshw.dxf', function(e, d) {
 	s += '// setup a new Millcrum object with that tool\nvar mc = new Millcrum(tool);\n';
 	s += '// set the surface dimensions for the viewer\nmc.surface('+(dxf.width*1.5)+','+(dxf.height*1.5)+');\n';
 
-	for (var c=0; c<dxf.polygons.length; c++) {
-		var wtf = dxf.polygons[c].layer;
+	for (var c=0; c<dxf.polylines.length; c++) {
+		var wtf = dxf.polylines[c].layer;
 		s += '\n//LAYER '+wtf+'\n';
-		s += 'var polygon'+c+' = {type:\'polygon\',name:\''+wtf+'\',points:[';
-		for (var p=0; p<dxf.polygons[c].points.length; p++) {
-			s += '['+dxf.polygons[c].points[p][0]+','+dxf.polygons[c].points[p][1]+'],';
+		s += 'var polyline'+c+' = {type:\'polygon\',name:\''+wtf+'\',points:[';
+		for (var p=0; p<dxf.polylines[c].points.length; p++) {
+			s += '['+dxf.polylines[c].points[p][0]+','+dxf.polylines[c].points[p][1]+'],';
 		}
 
-		s += ']};\nmc.cut(\'centerOnPath\', polygon'+c+', 4, [0,0]);\n';
+		s += ']};\nmc.cut(\'centerOnPath\', polyline'+c+', 4, [0,0]);\n';
 	}
 
 	s += '\nmc.get();\n';

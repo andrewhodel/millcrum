@@ -15,6 +15,8 @@ function addLoadEvent(func) {
 var toSaveGcode = '';
 var clickPaths = [];
 
+var doAlert;
+
 addLoadEvent(function() {
 
 	/*! @source http://purl.eligrey.com/github/FileSaver.js/blob/master/FileSaver.js */
@@ -109,6 +111,7 @@ addLoadEvent(function() {
 	// handle closeAlert
 	closeAlert.addEventListener('click', function() {
 		alertD.style.display = 'none';
+		alertText.innerHTML = '';
 		return false;
 	});
 
@@ -138,15 +141,15 @@ addLoadEvent(function() {
 			s += '// setup a new Millcrum object with that tool\nvar mc = new Millcrum(tool);\n';
 			s += '// set the surface dimensions for the viewer\nmc.surface('+(dxf.width*1.5)+','+(dxf.height*1.5)+');\n';
 
-			for (var c=0; c<dxf.polygons.length; c++) {
-				var wtf = dxf.polygons[c].layer;
+			for (var c=0; c<dxf.polylines.length; c++) {
+				var wtf = dxf.polylines[c].layer;
 				s += '\n//LAYER '+wtf+'\n';
-				s += 'var polygon'+c+' = {type:\'polygon\',name:\''+wtf+'\',points:[';
-				for (var p=0; p<dxf.polygons[c].points.length; p++) {
-					s += '['+dxf.polygons[c].points[p][0]+','+dxf.polygons[c].points[p][1]+'],';
+				s += 'var polyline'+c+' = {type:\'polygon\',name:\''+wtf+'\',points:[';
+				for (var p=0; p<dxf.polylines[c].points.length; p++) {
+					s += '['+dxf.polylines[c].points[p][0]+','+dxf.polylines[c].points[p][1]+'],';
 				}
 
-				s += ']};\nmc.cut(\'centerOnPath\', polygon'+c+', 4, [0,0]);\n';
+				s += ']};\nmc.cut(\'centerOnPath\', polyline'+c+', 4, [0,0]);\n';
 			}
 
 			s += '\nmc.get();\n';
@@ -195,25 +198,11 @@ addLoadEvent(function() {
 	// move editor to right side
 	d.style.left = window.innerWidth-parseInt(d.style.width)-60 + 'px';
 
-	// handle generate click
-	generate.addEventListener("click", function() {
+	doAlert = function(msg) {
 
-		// remove error, it will regen if it persists
-		alertD.style.display = 'none';
-
-		// remove any open pathInfo
-		pathInfo.style.display = 'none';
-
-		// reset clickPaths
-		clickPaths = [];
-
-		// with edit_area you have to use this to get the textarea contents
-		var mcCode = editAreaLoader.getValue('millcrumCode');
-		try {
-			eval(mcCode);
-		} catch (e) {
-			// log it to the alert window
-			alertText.innerHTML = e;
+		if (alertText.innerHTML == '') {
+			// open window and put text in it
+			alertText.innerHTML = msg;
 
 			// open the alert window
 			alertD.style.display = 'block';
@@ -227,8 +216,28 @@ addLoadEvent(function() {
 			window.setTimeout(function() {
 				alertD.style.backgroundColor = 'red';
 			}, 1000);
+		} else {
+			// just append text
+			alertText.innerHTML += '\n'+msg;
+		}
+	}
 
+	// handle generate click
+	generate.addEventListener("click", function() {
 
+		// remove any open pathInfo
+		pathInfo.style.display = 'none';
+
+		// reset clickPaths
+		clickPaths = [];
+
+		// with edit_area you have to use this to get the textarea contents
+		var mcCode = editAreaLoader.getValue('millcrumCode');
+		try {
+			eval(mcCode);
+		} catch (e) {
+			// log it to the alert window
+			doAlert(e);
 		}
 
 		// set saveGcode to visible
