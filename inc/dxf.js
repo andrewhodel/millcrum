@@ -1,4 +1,5 @@
 var Dxf = function() {
+	this.invalidEntities = [];
 	this.layers = [];
 	this.lines = [];
 	this.polylines = [];
@@ -162,8 +163,8 @@ Dxf.prototype.handleEntities = function(d) {
 					}
 				}
 
-				if (!isValid) {
-					doAlert('DXF ERROR: found invalid entity with type '+d[c+1]+' only lwpolyline and polyline supported\n');
+				if (!isValid && d[c+1] != undefined && d[c+1] != '  0') {
+					this.invalidEntities.push(d[c+1]);
 				}
 
 			}

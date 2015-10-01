@@ -172,6 +172,15 @@ addLoadEvent(function() {
 			var dxf = new Dxf();
 
 			dxf.parseDxf(r.result);
+
+			if (dxf.invalidEntities.length > 0) {
+				var errStr = '';
+				for (var c=0; c<dxf.invalidEntities.length; c++) {
+					errStr += dxf.invalidEntities[c] + '\n';
+				}
+				doAlert(errStr,'DXF Invalid Entities:');
+			}
+
 			var s = 'var tool = {units:"mm",diameter:6.35,passDepth:4,step:1,rapid:2000,plunge:100,cut:600,zClearance:5,returnHome:true};\n\n';
 
 			s += '// setup a new Millcrum object with that tool\nvar mc = new Millcrum(tool);\n\n';
@@ -249,28 +258,23 @@ addLoadEvent(function() {
 	// move editor to right side
 	d.style.left = window.innerWidth-parseInt(d.style.width)-60 + 'px';
 
-	doAlert = function(msg) {
+	doAlert = function(msg, type) {
 
-		if (alertText.innerHTML == '') {
-			// open window and put text in it
-			alertText.innerHTML = msg;
+		// open window and put text in it
+		alertText.innerHTML = '<h3>'+type+'</h3>'+msg;
 
-			// open the alert window
-			alertD.style.display = 'block';
+		// open the alert window
+		alertD.style.display = 'block';
 
-			// flash the alert window
+		// flash the alert window
+		window.setTimeout(function() {
+			alertD.style.backgroundColor = '#fff';
+		}, 500);
 
-			window.setTimeout(function() {
-				alertD.style.backgroundColor = '#fff';
-			}, 500);
+		window.setTimeout(function() {
+			alertD.style.backgroundColor = 'rgba(255,77,77,0.4)';
+		}, 1000);
 
-			window.setTimeout(function() {
-				alertD.style.backgroundColor = '#ff4d4d';
-			}, 1000);
-		} else {
-			// just append text
-			alertText.innerHTML += '\n'+msg;
-		}
 	}
 
 	// handle generate click
@@ -289,7 +293,7 @@ addLoadEvent(function() {
 			eval(mcCode);
 		} catch (e) {
 			// log it to the alert window
-			doAlert(e);
+			doAlert(e,'Millcrum Code Error:');
 		}
 
 		// set saveGcode to visible
