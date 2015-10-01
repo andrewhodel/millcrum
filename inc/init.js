@@ -184,11 +184,11 @@ addLoadEvent(function() {
 			var s = 'var tool = {units:"mm",diameter:6.35,passDepth:4,step:1,rapid:2000,plunge:100,cut:600,zClearance:5,returnHome:true};\n\n';
 
 			s += '// setup a new Millcrum object with that tool\nvar mc = new Millcrum(tool);\n\n';
-			s += '// set the surface dimensions for the viewer\nmc.surface('+(dxf.width*1.5)+','+(dxf.height*1.5)+');\n\n';
+			s += '// set the surface dimensions for the viewer\nmc.surface('+(dxf.width*1.1)+','+(dxf.height*1.1)+');\n\n\n';
 
 			// convert polylines to millcrum
 			for (var c=0; c<dxf.polylines.length; c++) {
-				s += '\n//LAYER '+dxf.polylines[c].layer+'\n';
+				s += '//LAYER '+dxf.polylines[c].layer+'\n';
 				s += 'var polyline'+c+' = {type:\'polygon\',name:\''+dxf.polylines[c].layer+'\',points:[';
 				for (var p=0; p<dxf.polylines[c].points.length; p++) {
 					s += '['+dxf.polylines[c].points[p][0]+','+dxf.polylines[c].points[p][1]+'],';
@@ -206,7 +206,7 @@ addLoadEvent(function() {
 				s += ']};\nmc.cut(\'centerOnPath\', line'+c+', 4, [0,0]);\n\n';
 			}
 
-			s += 'mc.get();\n';
+			s += '\nmc.get();\n';
 
 			// load the new millcrum code
 			millcrumCode.innerHTML = hljs.highlight('javascript',s).value;

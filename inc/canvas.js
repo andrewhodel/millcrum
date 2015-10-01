@@ -140,7 +140,7 @@ function init() {
 	// this will be the maximum size
 	sX = document.getElementById("surfaceX").value;
 	sY = document.getElementById("surfaceY").value;
-	//console.log('surface size: '+sX+','+sY);
+	console.log('surface size: '+sX+','+sY);
 
 	canvasContext = canv.getContext('2d');
 
@@ -208,7 +208,6 @@ function init() {
 		largerAxisSize = sX;
 
 	}
-	var gridSpacing = largerAxisSize/nGridLines;
 
 	// grid lines color
 	canvasContext.strokeStyle = '#eeeeee';
@@ -219,14 +218,14 @@ function init() {
 		// perpendicular to X (growing on Y axis)
 		canvasContext.beginPath();
 		canvasContext.fillStyle = 'red';
-		var p = getCanvPoint([0,c*gridSpacing]);
+		var p = getCanvPoint([0,c*(sY/nGridLines)]);
 		canvasContext.moveTo(p[0],p[1]);
-		p = getCanvPoint([sX,c*gridSpacing]);
+		p = getCanvPoint([sX,c*(sY/nGridLines)]);
 		canvasContext.lineTo(p[0],p[1]);
 
 		// write dimension
-		p = getCanvPoint([0,(c*gridSpacing)]);
-		canvasContext.fillText(Math.round(c*gridSpacing),p[0]-20,p[1]+5);
+		p = getCanvPoint([0,(c*(sY/nGridLines))]);
+		canvasContext.fillText(Math.round(c*(sY/nGridLines)),p[0]-20,p[1]+5);
 
 		// stroke
 		canvasContext.stroke();
@@ -234,14 +233,14 @@ function init() {
 		// perpendicular to Y (growing on X axis)
 		canvasContext.beginPath();
 		canvasContext.fillStyle = 'blue';
-		var p = getCanvPoint([c*gridSpacing,0]);
+		var p = getCanvPoint([c*(sX/nGridLines),0]);
 		canvasContext.moveTo(p[0],p[1]);
-		p = getCanvPoint([c*gridSpacing,sY]);
+		p = getCanvPoint([c*(sX/nGridLines),sY]);
 		canvasContext.lineTo(p[0],p[1]);
 
 		// write dimension
-		p = getCanvPoint([(c*gridSpacing),0]);
-		canvasContext.fillText(Math.round(c*gridSpacing),p[0]-4,p[1]+17);
+		p = getCanvPoint([(c*(sX/nGridLines)),0]);
+		canvasContext.fillText(Math.round(c*(sX/nGridLines)),p[0]-4,p[1]+17);
 
 		// stroke
 		canvasContext.stroke();
