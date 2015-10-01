@@ -145,6 +145,22 @@ Dxf.prototype.handleEntities = function(d) {
 
 							// increment entities line counter
 							c++;
+
+						}
+
+						if (d[c+1] == 'vertex' && entitiesToKeep[i] == 'polyline') {
+							// polyline entities have vertex blocks which are terminated by the same
+							// string as the entity blocks so we need to handle that
+
+							for (var r=c; r<d.length; r++) {
+								if (d[c] == 'seqend') {
+									// exit this for loop, this is another place a while won't work in js
+									break;
+								}
+								// keep adding points
+								currentEntity.lines.push(d[c]);
+								c++;
+							}
 						}
 
 						// need to decrement the line counter by one so not to skip every other entity
@@ -171,8 +187,6 @@ Dxf.prototype.handleEntities = function(d) {
 
 		}
 	}
-
-	//console.log(totalEntities + ' total entities');
 
 };
 
@@ -254,41 +268,75 @@ Dxf.prototype.handlePolyline = function(d) {
 	// keep track of the first layer name
 	var gotFirstLayerName = false;
 
-	// now loop through each of the lines for the polyline
-	for (var c = 0; c < d.lines.length; c++) {
+	if (d.type == 'lwpolyline') {
+		// if the type is lwpolyline then the first coordinate is the first coordinate
+		for (var c = 0; c < d.lines.length; c++) {
 
-		if (d.lines[c].match(/ 8/) && gotFirstLayerName == false) {
-			// the first ' 8' means the next line will be the layer name
-			// sometimes there is a '  8' and sometimes a ' 8' so we need to match on ' 8' which will get '  8'
-			// for some reason there are sometimes with some editors multiple of them
-			// the first one is the one that matters
-			c++;
-			singleEntity.layer = d.lines[c];
-			gotFirstLayerName = true;
-		} else if (d.lines[c] == ' 10') {
-			// this means the next line will be the X coordinate of a point
+			if (d.lines[c].match(/ 8/) && gotFirstLayerName == false) {
+				// the first ' 8' means the next line will be the layer name
+				// sometimes there is a '  8' and sometimes a ' 8' so we need to match on ' 8' which will get '  8'
+				// for some reason there are sometimes with some editors multiple of them
+				// the first one is the one that matters
+				c++;
+				singleEntity.layer = d.lines[c];
+				gotFirstLayerName = true;
+			} else if (d.lines[c] == ' 10') {
+				// this means the next line will be the X coordinate of a point
 
-			// if the type is lwpolyline then the first coordinate is the first coordinate
-			// if the type is polyline then the first coordinate is the offset, so we can skip it (strange)
-			if (d.type == 'polyline' && currentCoord == -1) {
-				// skip it
-				//console.log('skipping first point for polyline');
-			} else {
 				// inc the currentCoord
 				currentCoord++;
 				c++;
 				singleEntity.points.push([Number(d.lines[c])]);
+			} else if (d.lines[c] == ' 20') {
+				// this means the next line will be the Y coordinate of a point
+				c++;
+				singleEntity.points[currentCoord].push(Number(d.lines[c]));
+			} else if (d.lines[c] == ' 42') {
+				// this means the next line will be the curve value
+				c++;
+				singleEntity.points[currentCoord].push(Number(d.lines[c]));
 			}
-		} else if (d.lines[c] == ' 20' && currentCoord > -1) {
-			// this means the next line will be the Y coordinate of a point
-			c++;
-			singleEntity.points[currentCoord].push(Number(d.lines[c]));
-		} else if (d.lines[c] == ' 42' && currentCoord > -1) {
-			// this means the next line will be the curve value
-			c++;
-			singleEntity.points[currentCoord].push(Number(d.lines[c]));
-		}
 
+		}
+	} else if (d.type == 'polyline') {
+		// if the type is polyline then the first coordinate is the offset
+		// followed by VERTEX blocks which contain the points
+
+		// now loop through each of the lines for the polyline
+		for (var c = 0; c < d.lines.length; c++) {
+
+			if (d.lines[c].match(/ 8/) && gotFirstLayerName == false) {
+				// the first ' 8' means the next line will be the layer name
+				// sometimes there is a '  8' and sometimes a ' 8' so we need to match on ' 8' which will get '  8'
+				// for some reason there are sometimes with some editors multiple of them
+				// the first one is the one that matters
+				c++;
+				singleEntity.layer = d.lines[c];
+				gotFirstLayerName = true;
+			} else if (d.lines[c] == 'vertex') {
+				// we need to now loop through this vertex to get the coordinates
+				c++;
+				for (var r=c; r<d.lines.length; r++) {
+
+					if (d.lines[c] == '10') {
+						// inc the currentCoord
+						currentCoord++;
+						c++;
+						singleEntity.points.push([Number(d.lines[c])]);
+					} else if (d.lines[c] == '20') {
+						c++;
+						singleEntity.points[currentCoord].push(Number(d.lines[c]));
+					} else if (d.lines[c] == '42') {
+						c++;
+						singleEntity.points[currentCoord].push(Number(d.lines[c]));
+					} else if (d.lines[c] == '  0') {
+						break;
+					}
+
+					c++;
+				}
+			}
+		}
 	}
 
 	//console.log('polyline singleEntity',singleEntity);
