@@ -359,7 +359,10 @@ Dxf.prototype.handleLine = function(d) {
 
 };
 
-Dxf.prototype.handlePolyline = function(d, isPoints=false) {
+Dxf.prototype.handlePolyline = function(d, isPoints) {
+	if (typeof(isPoints) == 'undefined') {
+		var isPoints = false;
+	}
 
 	//console.log('handlePolyline',d);
 
