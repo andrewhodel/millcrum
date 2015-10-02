@@ -56,16 +56,32 @@ addLoadEvent(function() {
         // we use this to show information about a path
         lcanv.addEventListener("click", function(e) {
 
+		// a click could be in multiple paths
+		var pathArea = clickPaths[0].signedArea;
+		var smallestAreaPath = -1;
+
                 // test if the click was within on of the clickPaths
                 for (c=0; c<clickPaths.length; c++) {
                         if (localMc.pointInPolygon([e.pageX-lcanv.offsetLeft,e.pageY-lcanv.offsetTop],clickPaths[c].path)) {
-				pathInfoText.innerHTML = 'Name: '+clickPaths[c].name+'\nCut Type: <span style="color: #00008b;">'+clickPaths[c].cutType+'</span>\nDepth: '+clickPaths[c].depth+'\nDirection: '+clickPaths[c].pathDir+'\nArea: ~'+clickPaths[c].signedArea+'\nStart Point: X'+clickPaths[c].startPoint[0]+' Y'+clickPaths[c].startPoint[1]+'\n';
-				pathInfo.style.left = e.pageX-220 + 'px';
-				pathInfo.style.top = e.pageY + 'px';
-				pathInfo.style.display = 'block';
-				break;
+				if (smallestAreaPath == -1) {
+					pathArea = Math.abs(clickPaths[c].signedArea);
+					smallestAreaPath = c;
+				} else {
+					if (Math.abs(clickPaths[c].signedArea) < pathArea) {
+						pathArea = clickPaths[c].signedArea;
+						smallestAreaPath = c;
+					}
+				}
+
                         }   
-                }   
+                }
+
+		if (smallestAreaPath > -1) {
+			pathInfoText.innerHTML = 'Name: '+clickPaths[smallestAreaPath].name+'\nCut Type: <span style="color: #00008b;">'+clickPaths[smallestAreaPath].cutType+'</span>\nDepth: '+clickPaths[smallestAreaPath].depth+'\nDirection: '+clickPaths[smallestAreaPath].pathDir+'\nArea: ~'+clickPaths[smallestAreaPath].signedArea+'\nStart Point: X'+clickPaths[smallestAreaPath].startPoint[0]+' Y'+clickPaths[smallestAreaPath].startPoint[1]+'\n';
+			pathInfo.style.left = e.pageX-220 + 'px';
+			pathInfo.style.top = e.pageY + 'px';
+			pathInfo.style.display = 'block';
+		}
 
         });
 
@@ -173,12 +189,22 @@ addLoadEvent(function() {
 
 			dxf.parseDxf(r.result);
 
+			var errStr = '';
 			if (dxf.invalidEntities.length > 0) {
-				var errStr = '';
 				for (var c=0; c<dxf.invalidEntities.length; c++) {
-					errStr += dxf.invalidEntities[c] + '\n';
+					errStr += 'Invalid Entity: '+dxf.invalidEntities[c] + '\n';
 				}
-				doAlert(errStr,'DXF Invalid Entities:');
+				errStr += '\n';
+			}
+
+			if (dxf.alerts.length > 0) {
+				for (var c=0; c<dxf.alerts.length; c++) {
+					errStr += dxf.alerts[c] + '\n\n';
+				}
+			}
+
+			if (errStr != '') {
+				doAlert(errStr,'DXF Errors:');
 			}
 
 			var s = 'var tool = {units:"mm",diameter:6.35,passDepth:4,step:1,rapid:2000,plunge:100,cut:600,zClearance:5,returnHome:true};\n\n';
@@ -188,6 +214,10 @@ addLoadEvent(function() {
 
 			// convert polylines to millcrum
 			for (var c=0; c<dxf.polylines.length; c++) {
+				if (dxf.polylines[c].layer == '') {
+					// name it polyline+c
+					dxf.polylines[c].layer = 'polyline'+c;
+				}
 				s += '//LAYER '+dxf.polylines[c].layer+'\n';
 				s += 'var polyline'+c+' = {type:\'polygon\',name:\''+dxf.polylines[c].layer+'\',points:[';
 				for (var p=0; p<dxf.polylines[c].points.length; p++) {

@@ -7,6 +7,12 @@ var Dxf = function() {
 	this.maxPoint = [0,0];
 	this.width = 0;
 	this.height = 0;
+	this.avgSize = 0;
+	this.alerts = [];
+};
+
+Dxf.prototype.terneryDiff = function(a,b) {
+	return (a > b)? a-b : b-a;
 };
 
 Dxf.prototype.addDegrees = function(base,mod) {
@@ -114,7 +120,7 @@ Dxf.prototype.handleEntities = function(d) {
 	// each entity starts with '  0' then the next line is the type of entity
 	var currentEntity = {type:'',lines:[]};
 
-	var entitiesToKeep = ['lwpolyline','polyline','line'];
+	var entitiesToKeep = ['lwpolyline','polyline','line','circle','arc'];
 
 	var totalEntities = 0;
 
@@ -169,8 +175,10 @@ Dxf.prototype.handleEntities = function(d) {
 						// send to entity handler type
 						if (entitiesToKeep[i] == 'line') {
 							this.handleLine(currentEntity);
-						} else {
+						} else if (entitiesToKeep[i] == 'polyline' || entitiesToKeep[i] == 'lwpolyline') {
 							this.handlePolyline(currentEntity);
+						} else if (entitiesToKeep[i] == 'circle' || entitiesToKeep[i] == 'arc') {
+							this.handleArc(currentEntity);
 						}
 						totalEntities++;
 
@@ -185,6 +193,101 @@ Dxf.prototype.handleEntities = function(d) {
 
 			}
 
+		}
+	}
+
+};
+
+Dxf.prototype.handleArc = function(d) {
+
+	//console.log('handleArc',d);
+
+	// x,y,r,startAngle,endAngle
+	var thisArc = [0,0,0,0,0];
+
+	// now loop through each of the lines for the arc
+	// 10,20,30 start point
+	// 40 radius
+	// 50,51 start angle, end angle
+	for (var c = 0; c < d.lines.length; c++) {
+		if (d.lines[c] == ' 10') {
+			c++;
+			thisArc[0] = Number(d.lines[c]);
+		} else if (d.lines[c] == ' 20') {
+			c++;
+			thisArc[1] = Number(d.lines[c]);
+		} else if (d.lines[c] == ' 40') {
+			c++;
+			thisArc[2] = Number(d.lines[c]);
+		} else if (d.lines[c] == ' 50') {
+			c++;
+			thisArc[3] = Number(d.lines[c]);
+		} else if (d.lines[c] == ' 51') {
+			c++;
+			thisArc[4] = Number(d.lines[c]);
+		}
+	}
+
+	if (d.type == 'circle') {
+		thisArc[3] = 0;
+		thisArc[4] = 360;
+	} else {
+		this.alerts.push('Arc detected, arcs are difficult to close paths with.  It may be easier to edit the DXF and generate polylines.');
+	}
+
+	// probably need to include 210,220,230 extrusion direction here
+	// but it's ok for now
+
+	if (thisArc[4] == 0) {
+		thisArc[4] = 360;
+	}
+
+	var arcTotalDeg = thisArc[4] - thisArc[3];
+
+	// now we need to create the line segments in the arc
+	var numSegments = 40;
+	var degreeStep = arcTotalDeg / numSegments;
+
+	// holder for the path
+	var newPoints = [];
+
+	// now loop through each degreeStep
+	for (var a=0; a<numSegments+1; a++) {
+		var pt = this.newPointFromDistanceAndAngle([thisArc[0],thisArc[1]], this.addDegrees(thisArc[3], (degreeStep * a)), thisArc[2]);
+		// add the point
+		newPoints.push(pt);
+	}
+
+	// check if arc exceeds min and max DXF point
+	// if so update
+
+	for (var i=0; i<newPoints.length-1; i++) {
+		var p1 = newPoints[i];
+
+		// for x
+		if (p1[0] > this.maxPoint[0]) {
+			this.maxPoint[0] = p1[0];
+		} else if (p1[0] < this.minPoint[0]) {
+			this.minPoint[0] = p1[0];
+		}
+
+		// for y
+		if (p1[1] > this.maxPoint[1]) {
+			this.maxPoint[1] = p1[1];
+		} else if (p1[1] < this.minPoint[1]) {
+			this.minPoint[1] = p1[1];
+		}
+
+	}
+
+	if (d.type == 'circle') {
+		this.polylines.push({layer:'circle',points:newPoints});
+	} else {
+		// arcs need to be created as lines so the polylines can be followed
+		for (var c=0; c<newPoints.length; c++) {
+			if (c+1 <= newPoints.length-1) {
+				this.lines.push([newPoints[c][0],newPoints[c][1],0,newPoints[c+1][0],newPoints[c+1][1],0]);
+			}
 		}
 	}
 
@@ -256,7 +359,7 @@ Dxf.prototype.handleLine = function(d) {
 
 };
 
-Dxf.prototype.handlePolyline = function(d) {
+Dxf.prototype.handlePolyline = function(d, isPoints=false) {
 
 	//console.log('handlePolyline',d);
 
@@ -352,6 +455,7 @@ Dxf.prototype.handlePolyline = function(d) {
 
 	// loop through each point in polygon to update the min and max
 	// values for the whole dxf
+
 	for (var i=0; i<singleEntity.points.length-1; i++) {
 		var p1 = singleEntity.points[i];
 
@@ -517,9 +621,6 @@ Dxf.prototype.handlePolyline = function(d) {
 						thisLoopPoints.push(pt);
 					}
 
-					p1 = thisLoopPoints[0];
-					p2 = thisLoopPoints[thisLoopPoints.length-1];
-
 				}
 
 
@@ -601,6 +702,134 @@ Dxf.prototype.parseDxf = function(d) {
 	// set dxf width and height now that all entities are processed
 	this.width = this.maxPoint[0] - this.minPoint[0];
 	this.height = this.maxPoint[1] - this.minPoint[1];
+	this.avgSize = (this.width+this.height)/2;
+
+	// now we can loop through all the lines and make polylines for all
+	// lines which share a common end to next start point, procedurally
+
+	// this only converts lines to polylines when points match exactly
+	// there is no rounding and if 2 points are off by even .0000000001
+	// they will not convert as who knows what scale things are at
+	// edit your DXF's correctly
+
+	// this holds the lines we will remove which were turned into polylines
+	var removeLines = [];
+
+	for (var c=0; c<this.lines.length; c++) {
+
+		var tempPolyline = [];
+		var startLine = 0;
+
+		try {
+
+		// if this lines end point and the next lines start point are the same
+		if (this.lines[c][3] == this.lines[c+1][0] && this.lines[c][4] == this.lines[c+1][1]) {
+
+			startLine = c;
+			// this line and the next line are connected
+			// add this line start point
+			tempPolyline.push([this.lines[c][0],this.lines[c][1]]);
+			// add next line start point
+			tempPolyline.push([this.lines[c+1][0],this.lines[c+1][1]]);
+			// add next line end point
+			tempPolyline.push([this.lines[c+1][3],this.lines[c+1][4]]);
+			c++;
+			// while this lines end point and the next lines start point remain the same
+			for (var r=c; r<this.lines.length-1; r++) {
+				if (this.lines[c][3] == this.lines[c+1][0] && this.lines[c][4] == this.lines[c+1][1]) {
+					// add the next lines start point
+					//tempPolyline.push([this.lines[c+1][0],this.lines[c+1][1]]);
+					// add the next lines end point
+					tempPolyline.push([this.lines[c+1][3],this.lines[c+1][4]]);
+					c++;
+				}
+			}
+
+			// if the previous lines end point equals the first lines start point
+			if (tempPolyline[0][0] == tempPolyline[tempPolyline.length-1][0] && tempPolyline[0][1] == tempPolyline[tempPolyline.length-1][1]) {
+				// we know it's a valid polygon
+
+				// remove all those lines from this.lines
+				removeLines.push([startLine,c-startLine]);
+
+				// add tempPolyline to this.polylines
+				this.polylines.push({layer:'',points:tempPolyline});
+
+			}
+		} else {
+
+			// here we can check if the points were close and inform the user
+			// that these points were close but not exact so we couldn't form a polyline
+
+			//if (this.terneryDiff(this.lines[c][3],this.lines[c+1][0]) < this.avgSize/20 && this.terneryDiff(this.lines[c][4],this.lines[c+1][1]) < this.avgSize/20) {
+			var pointDiff = this.distanceFormula([this.lines[c][3],this.lines[c][4]], [this.lines[c+1][0],this.lines[c+1][1]]);
+			if (pointDiff < this.avgSize/20) {
+				this.alerts.push('line'+c+' and line'+Number(c+1)+' could be part of a polyline they are '+pointDiff+' units away from one another.  Make lines start and end at the exact same point and they will form polylines.');
+			}
+
+		}
+
+		} catch (err) {
+			console.log(err);
+			console.log(this.lines.length,c);
+			console.log(this.lines[c]);
+		}
+
+	}
+
+	for (var c=0; c<removeLines.length; c++) {
+		for (var r=0; r<removeLines[c][1]+1; r++) {
+			delete this.lines[removeLines[c][0]+r];
+		}
+	}
+
+	// reset the array index after deleting
+	this.lines = this.lines.filter(function(){return true;});
+
+/*
+
+	// this is a WIP way of connecting lines which are not ordered
+	// it is more procedural when ordered
+	// this needs to be completed because lines may be drawn out of order
+	// and probably are for most drawings
+
+	// this is an array of lines which have common lines
+	var commonLines = [];
+
+	console.log('lines',this.lines);
+
+	for (var c=0; c<this.lines.length; c++) {
+
+		// with each start and end point of each line
+		// we need to loop through every _other_ line to see
+		// if there is a match
+		for (var d=0; d<this.lines.length; d++) {
+
+			if (d == c) {
+				// we do not need to check on the line we are checking on (first loop)
+			} else {
+				// check if this line _d_ shares a point with _c_
+				// (first line x1 == second line x1 && first line y1 == second line y1) ||
+				// (first line x1 == second line x2 && first line y1 == second line y2) ||
+				// (first line x2 == second line x1 && first line y2 == second line y1) ||
+				// (first line x2 == second line x2 && first line y2 == second line y2)
+				if ((this.lines[c][0] == this.lines[d][0] && this.lines[c][1] == this.lines[d][1]) || (this.lines[c][0] == this.lines[d][3] && this.lines[c][1] == this.lines[d][4]) || (this.lines[c][3] == this.lines[d][0] && this.lines[c][4] == this.lines[d][1]) || (this.lines[c][3] == this.lines[d][3] && this.lines[c][4] == this.lines[d][4])) {
+					// they share a point
+					if (!commonLines[c]) {
+						// create an entry in commonLines for this _c_ point if it does not exist
+						commonLines[c] = [];
+					}
+					// add this _d_ point as a common line to c
+					commonLines[c].push(d);
+				}
+			}
+
+		}
+
+	}
+
+	console.log('commonLines',commonLines);
+*/
 
 	//console.log(this);
 

@@ -70,7 +70,7 @@ function drawPath(p, tool, cutType, depth, isOriginal, name) {
 			}
 
 			// store the path for mouse clicks
-			clickPaths.push({path:np,cutType:cutType,depth:cDepth,pathDir:pathDir,signedArea:Math.round(signedArea/2)+tool.units,startPoint:p[0],name:name});
+			clickPaths.push({path:np,cutType:cutType,depth:cDepth,pathDir:pathDir,signedArea:Math.round(signedArea/2),startPoint:p[0],name:name});
 		}
 
 		if (maxx > sX || maxy > sY) {
