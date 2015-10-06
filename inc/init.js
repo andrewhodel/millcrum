@@ -169,14 +169,14 @@ addLoadEvent(function() {
 
 	// save .gcode
 	sgc.addEventListener('click', function() {
-		var blob = new Blob([toSaveGcode], {type: 'text/plain;charset=utf-8'});
-		saveAs(blob, 'output.gcode');
+		var blob = new Blob([toSaveGcode]);
+		saveAs(blob, 'output.gcode', true);
 	});
 
 	// save .millcrum
 	smc.addEventListener('click', function() {
-		var blob = new Blob([millcrumCode.textContent || millcrumCode.innerText], {type: 'text/plain;charset=utf-8'});
-		saveAs(blob, 'output.millcrum');
+		var blob = new Blob([millcrumCode.textContent || millcrumCode.innerText]);
+		saveAs(blob, 'output.millcrum', true);
 	});
 
 	// open .dxf
