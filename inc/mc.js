@@ -326,7 +326,7 @@ Millcrum.prototype.generateOffsetPath = function(type, basePath, offsetDistance)
 
 };
 
-Millcrum.prototype.cut = function(cutType, obj, depth, startPos, reverse) {
+Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 
 	if (typeof(depth) == 'undefined') {
 		// default depth of a cut is the tool defined passDepth
@@ -338,9 +338,35 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, reverse) {
 		startPos = [0,0];
 	}
 
-	if (typeof(reverse) == 'undefined') {
-		// default reverse is false
-		reverse = false;
+	if (typeof(config) != 'object') {
+
+		var config = {};
+
+		if (typeof(config.useConventionalCut) == 'undefined') {
+			// default cut direction is climb
+			config.useConventionalCut = false;
+		}
+	}
+
+	// finish setting config options
+	if (typeof(config.tabs) == 'undefined') {
+		// default is to not use tabs
+		config.tabs = false;
+	} else if (config.tabs == true) {
+		// need to set defaults for using tabs if they aren't set
+		// by the user
+		if (typeof(config.tabHeight) == 'undefined') {
+			// default height is 2, sure hope you are using mm
+			config.tabHeight = 2;
+		}
+		if (typeof(config.tabSpacing) == 'undefined') {
+			// default tab spacing is 5 times tool.diameter
+			config.tabSpacing = this.tool.diameter*5;
+		}
+		if (typeof(config.tabWidth) == 'undefined') {
+			// default tab width is 1 times tool.diameter
+			config.tabWidth = this.tool.diameter;
+		}
 	}
 
 	//console.log('generating cut operation:');
@@ -659,7 +685,7 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, reverse) {
 
 	// for reversing path directions to change between the default CCW (Climb) cut
 	// to a CW (Conventional) cut
-	if (reverse == true) {
+	if (config.useConventionalCut == true) {
 		basePath.reverse();
 		toolPath.reverse();
 	}
@@ -718,7 +744,81 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, reverse) {
 		// move to Z
 		for (c=0; c<toolPath.length; c++) {
 			// generate each straight line
-			this.gcode += 'G1 X'+toolPath[c][0]+' Y'+toolPath[c][1]+'\n';
+
+			if (c == toolPath.length-1) {
+				// this is the last line in the toolPath we can just add it
+				// per the +1 to c on tab creation
+				this.gcode += 'G1 X'+toolPath[c][0]+' Y'+toolPath[c][1]+'\n';
+			} else if (z == numZ && config.tabs == true) {
+				// as this is the bottom layer and tabs are to be created
+				// we need to create the tabs
+				// tabs are only created on straight line sections
+				// because it is hard to cut them out of curved sections
+				// first we get the total distance of the path
+				var d = this.distanceFormula(toolPath[c],toolPath[c+1]);
+				if (d >= (config.tabSpacing+config.tabWidth)) {
+					// we should create tabs
+					var numTabs = Math.round(d/(config.tabSpacing+config.tabWidth));
+					// if we have a line distance of 100
+					// and 3 tabs (width 10) in that line per numTabs
+					// then we want to evenly space them
+					// so we divide the line distance by numTabs
+					var spacePerTab = d/numTabs;
+					// which in our example would be 33.33~
+					// then in each space per tab we need to center the tab
+					// which means dividing the difference of the spacePerTab and tabWidth by 2
+					var tabPaddingPerSpace = (spacePerTab-config.tabWidth)/2;
+
+					// now we need to do the point geometry to get the points
+					// we start at toolPath[c] which represents the starting point
+					// and we end at toolPath[c+1]
+
+					// first we need to get the angle that the whole line is running along
+					// get the deltas for X and Y to calculate the line angle with atan2
+					var deltaX = toolPath[c+1][0] - toolPath[c][0];
+					var deltaY = toolPath[c+1][1] - toolPath[c][1];
+
+					// get the line angle
+					var ang = Math.atan2(deltaY,deltaX);
+					//console.log('  ANGLE '+ang+' or '+(ang*180/Math.PI));
+
+					// convert it to degrees for later math with addDegree
+					ang = ang*180/Math.PI;
+
+					// now that we have the line angle, we can create each of the tabs
+					// first we need to add the first point to gcode
+					this.gcode += 'G1 X'+toolPath[c][0]+' Y'+toolPath[c][1]+'\n';
+					this.gcode += '\n; START TABS\n';
+					for (var r=0; r<numTabs; r++) {
+						// then for each tab
+						// add another point at the current point +tabPaddingPerSpace
+						var npt = this.newPointFromDistanceAndAngle(toolPath[c],ang,tabPaddingPerSpace);
+						this.gcode += 'G1 X'+npt[0]+' Y'+npt[1]+'\n';
+						// then we raise the z height by config.tabHeight
+						this.gcode += 'G1 Z'+(zPos+config.tabHeight)+'\n';
+						// then add another point at the current point +tabWidth
+						npt = this.newPointFromDistanceAndAngle(npt,ang,config.tabWidth);
+						this.gcode += 'G1 X'+npt[0]+' Y'+npt[1]+'\n';
+						// then lower the z height back to zPos at plunge speed
+						this.gcode += 'G1 F'+this.tool.plunge+' Z'+zPos+'\n';
+						// then reset speed to this.tool.cut speed
+						this.gcode += 'G1 F'+this.tool.cut+'\n';
+						// then add another point at the current point +tabPaddingPerSpace
+						npt = this.newPointFromDistanceAndAngle(npt,ang,tabPaddingPerSpace);
+						this.gcode += 'G1 X'+npt[0]+' Y'+npt[1]+'\n';
+					}
+					this.gcode += '; END TABS\n\n';
+
+					//console.log(numTabs+' for a line of '+d+' units with '+spacePerTab+' space per tab and a tabPaddingPerSpace of '+tabPaddingPerSpace);
+					//console.log('line angle '+ang);
+				} else {
+					// line is not long enough, just draw it
+					this.gcode += 'G1 X'+toolPath[c][0]+' Y'+toolPath[c][1]+'\n';
+				}
+			} else {
+				// no tabs
+				this.gcode += 'G1 X'+toolPath[c][0]+' Y'+toolPath[c][1]+'\n';
+			}
 		}
 
 	}

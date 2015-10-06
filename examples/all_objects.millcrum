@@ -22,11 +22,17 @@ mc.surface(1000,600);
 // the name is not required, but it will display on the canvas and in the gcode comments
 var rect = {type:'rect',xLen:50,yLen:50,name:'50mm square'};
 
-// cut the square with an pocket path and position it at 200,100
-// depth 4
-// if you set the 5th argument to mc.cut() as true it will reverse the path
-// so instead of the normal CCW (Climb) path direction it will cut a CW (Conventional) path
-mc.cut('pocket', rect, 4, [200,100], true);
+// cut the square with an pocket path and position it at 200,100 and a depth of 4
+
+// the 5th argument to mc.cut is an object of options
+// {useConventionalCut:true} will use a (CW) conventional cut instead of the default (CCW) climb cut
+// you can also use tabs with
+// {tabs: true, tabHeight: 2, tabSpacing: tool.diameter*5, tabWidth: tool.diameter}
+// where tabHeight (default 2) represents the height of the tab from the bottom of the cut
+// tabSpacing (default tool.diameter*5) represents the distance between each tab
+// and tabWidth (default tool.diameter) represents the width of each tab
+// tabs are used to hold down material while it is being cut
+mc.cut('pocket', rect, 4, [200,100], {useConventionalCut:true});
 
 // YOU CAN CLICK ON THE OBJECTS IN MILLCRUM TO SEE THEIR PATH DIRECTION AND CUT INFO
 
