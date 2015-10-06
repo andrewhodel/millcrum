@@ -789,10 +789,11 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 					// first we need to add the first point to gcode
 					this.gcode += 'G1 X'+toolPath[c][0]+' Y'+toolPath[c][1]+'\n';
 					this.gcode += '\n; START TABS\n';
+					var npt = toolPath[c];
 					for (var r=0; r<numTabs; r++) {
 						// then for each tab
 						// add another point at the current point +tabPaddingPerSpace
-						var npt = this.newPointFromDistanceAndAngle(toolPath[c],ang,tabPaddingPerSpace);
+						npt = this.newPointFromDistanceAndAngle(npt,ang,tabPaddingPerSpace);
 						this.gcode += 'G1 X'+npt[0]+' Y'+npt[1]+'\n';
 						// then we raise the z height by config.tabHeight
 						this.gcode += 'G1 Z'+(zPos+config.tabHeight)+'\n';
