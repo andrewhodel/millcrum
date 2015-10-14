@@ -421,6 +421,7 @@ Dxf.prototype.handlePolyline = function(d, isPoints) {
 				gotFirstLayerName = true;
 			} else if (d.lines[c] == 'vertex') {
 				// we need to now loop through this vertex to get the coordinates
+				// go to the next line
 				c++;
 				for (var r=c; r<d.lines.length; r++) {
 
@@ -435,7 +436,7 @@ Dxf.prototype.handlePolyline = function(d, isPoints) {
 					} else if (d.lines[c] == '42') {
 						c++;
 						singleEntity.points[currentCoord].push(Number(d.lines[c]));
-					} else if (d.lines[c] == '  0') {
+					} else if (d.lines[c] == '  0' || d.lines[c] == 'vertex') {
 						break;
 					}
 
@@ -482,6 +483,7 @@ Dxf.prototype.handlePolyline = function(d, isPoints) {
 	var newPoints = [];
 
 	for (var i=0; i<singleEntity.points.length-1; i++) {
+
 		var p1 = singleEntity.points[i];
 		var p2 = singleEntity.points[i+1];
 
@@ -630,6 +632,7 @@ Dxf.prototype.handlePolyline = function(d, isPoints) {
 			} else {
 				// line segment without curve, add it
 				newPoints.push(p1,p2);
+				i++;
 			}
 
 		}

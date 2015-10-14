@@ -291,8 +291,7 @@ Millcrum.prototype.generateOffsetPath = function(type, basePath, offsetDistance)
 		} else {
 
 			// then we can enter that point in the path and it will magically be correct
-			// we also round to 8 decimals here
-			rPath.push([Math.round(iPoint.x*100000000)/100000000,Math.round(iPoint.y*100000000)/100000000]);
+			rPath.push([iPoint.x,iPoint.y]);
 
 		}
 
@@ -527,7 +526,6 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 	// here we need to offset basePath by startPos
 	// this allows users to create objects and move them around
 	// JS forces us to cp this to a new array here
-	// we also round to 8 decimal places
 	var cp = [];
 
 	// we also collect the min, max and total size of the object here
@@ -581,9 +579,9 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 
 		cp[c] = [];
 		// offset X by startPos
-		cp[c].push(Math.round((basePath[c][0]+startPos[0])*100000000)/100000000);
+		cp[c].push(basePath[c][0]+startPos[0]);
 		// offset Y by startPos
-		cp[c].push(Math.round((basePath[c][1]+startPos[1])*100000000)/100000000);
+		cp[c].push(basePath[c][1]+startPos[1]);
 	}
 
 	// now we can re-order cp to start from the safeStartingPoint if we need to
@@ -681,6 +679,7 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 		// we need to now set the path and offset path back to their original direction
 		basePath.reverse();
 		toolPath.reverse();
+		console.log('was reversed');
 	}
 
 	// for reversing path directions to change between the default CCW (Climb) cut
@@ -695,6 +694,8 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 
 	// draw the original path on the html canvas
 	drawPath(basePath, this.tool, cutType, depth, true, obj.name);
+
+	//console.log('basePath first point inside mc.cut ',basePath[0]);
 
 	if (cutType != 'centerOnPath') {
 		// draw the offset path on the html canvas
