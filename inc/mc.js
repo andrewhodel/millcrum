@@ -739,33 +739,34 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 		// generate Z movement at this.tool.plunge speed
 		this.gcode += 'G1 F'+this.tool.plunge+' Z'+zPos+'\n';
 
-		// set speed to this.tool.cut speed
-		this.gcode += 'G1 F'+this.tool.cut+'\n';
-
-		// move to Z
+		// loop through each point in the path
 		for (c=0; c<toolPath.length; c++) {
-			// generate each straight line
 
 			if (c == toolPath.length-1) {
-				// this is the last line in the toolPath we can just add it
-				// per the +1 to c on tab creation
-				this.gcode += 'G1 X'+toolPath[c][0]+' Y'+toolPath[c][1]+'\n';
-			} else if (z == numZ && config.tabs == true) {
-				// as this is the bottom layer and tabs are to be created
-				// we need to create the tabs
+				// this is the last point in the toolPath we can just add it
+				// regardless of the current Z
+				this.gcode += 'G1 F'+this.tool.cut+' X'+toolPath[c][0]+' Y'+toolPath[c][1]+'\n';
+
+			// now we need to check if this Z layer would need to account for tabs
+			// in the event that the tabHeight is greater than tool.passDepth,
+			// multiple layers would have to account for tabs
+			// numZ is the total number of Z layers
+			} else if (this.tool.passDepth*(numZ-z) <= config.tabHeight && config.tabs == true) {
+				console.log('creating tabs for Z pass '+z);
+				// we need to create the tabs for this layer
 				// tabs are only created on straight line sections
 				// because it is hard to cut them out of curved sections
 				// first we get the total distance of the path
 				var d = this.distanceFormula(toolPath[c],toolPath[c+1]);
 				if (d >= (config.tabSpacing+config.tabWidth)) {
-					// we should create tabs
+					// there is space in this line to create tabs
 					var numTabs = Math.round(d/(config.tabSpacing+config.tabWidth));
 					// if we have a line distance of 100
 					// and 3 tabs (width 10) in that line per numTabs
 					// then we want to evenly space them
 					// so we divide the line distance by numTabs
 					var spacePerTab = d/numTabs;
-					// which in our example would be 33.33~
+					// which in this example would be 33.33~
 					// then in each space per tab we need to center the tab
 					// which means dividing the difference of the spacePerTab and tabWidth by 2
 					var tabPaddingPerSpace = (spacePerTab-config.tabWidth)/2;
@@ -788,26 +789,25 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 
 					// now that we have the line angle, we can create each of the tabs
 					// first we need to add the first point to gcode
-					this.gcode += 'G1 X'+toolPath[c][0]+' Y'+toolPath[c][1]+'\n';
+					this.gcode += 'G1 F'+this.tool.cut+' X'+toolPath[c][0]+' Y'+toolPath[c][1]+'\n';
 					this.gcode += '\n; START TABS\n';
 					var npt = toolPath[c];
 					for (var r=0; r<numTabs; r++) {
 						// then for each tab
 						// add another point at the current point +tabPaddingPerSpace
 						npt = this.newPointFromDistanceAndAngle(npt,ang,tabPaddingPerSpace);
-						this.gcode += 'G1 X'+npt[0]+' Y'+npt[1]+'\n';
+						this.gcode += 'G1 F'+this.tool.cut+' X'+npt[0]+' Y'+npt[1]+'\n';
 						// then we raise the z height by config.tabHeight
 						this.gcode += 'G1 Z'+(zPos+config.tabHeight)+'\n';
 						// then add another point at the current point +tabWidth
 						npt = this.newPointFromDistanceAndAngle(npt,ang,config.tabWidth);
-						this.gcode += 'G1 X'+npt[0]+' Y'+npt[1]+'\n';
+						this.gcode += 'G1 F'+this.tool.cut+' X'+npt[0]+' Y'+npt[1]+'\n';
 						// then lower the z height back to zPos at plunge speed
 						this.gcode += 'G1 F'+this.tool.plunge+' Z'+zPos+'\n';
-						// then reset speed to this.tool.cut speed
-						this.gcode += 'G1 F'+this.tool.cut+'\n';
 						// then add another point at the current point +tabPaddingPerSpace
+						// with the cut speed
 						npt = this.newPointFromDistanceAndAngle(npt,ang,tabPaddingPerSpace);
-						this.gcode += 'G1 X'+npt[0]+' Y'+npt[1]+'\n';
+						this.gcode += 'G1 F'+this.tool.cut+' X'+npt[0]+' Y'+npt[1]+'\n';
 					}
 					this.gcode += '; END TABS\n\n';
 
@@ -815,11 +815,11 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 					//console.log('line angle '+ang);
 				} else {
 					// line is not long enough, just draw it
-					this.gcode += 'G1 X'+toolPath[c][0]+' Y'+toolPath[c][1]+'\n';
+					this.gcode += 'G1 F'+this.tool.cut+' X'+toolPath[c][0]+' Y'+toolPath[c][1]+'\n';
 				}
 			} else {
 				// no tabs
-				this.gcode += 'G1 X'+toolPath[c][0]+' Y'+toolPath[c][1]+'\n';
+				this.gcode += 'G1 F'+this.tool.cut+' X'+toolPath[c][0]+' Y'+toolPath[c][1]+'\n';
 			}
 		}
 
