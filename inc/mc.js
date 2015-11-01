@@ -363,8 +363,8 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 			config.tabSpacing = this.tool.diameter*5;
 		}
 		if (typeof(config.tabWidth) == 'undefined') {
-			// default tab width is 1 times tool.diameter
-			config.tabWidth = this.tool.diameter;
+			// default tab width is 2 times tool.diameter
+			config.tabWidth = this.tool.diameter*2;
 		}
 	}
 

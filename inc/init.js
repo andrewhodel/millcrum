@@ -176,7 +176,7 @@ addLoadEvent(function() {
 	// save .millcrum
 	smc.addEventListener('click', function() {
 		var blob = new Blob([millcrumCode.textContent || millcrumCode.innerText]);
-		saveAs(blob, 'output.millcrum', true);
+		saveAs(blob, 'output.millcrum.js', true);
 	});
 
 	// open .dxf
