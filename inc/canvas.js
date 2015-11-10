@@ -80,9 +80,15 @@ function drawPath(p, tool, cutType, depth, isOriginal, name) {
 		// move to first point
 		canvasContext.beginPath();
 		canvasContext.moveTo(np[0][0],np[0][1]);
+		canvasContext.font = "12px Arial";
 
 		// loop through path starting at 1
 		for (var c=1; c<p.length; c++) {
+			if (isOriginal) {
+				// draw coordinates on screen
+				//canvasContext.fillStyle = '#000';
+				//canvasContext.fillText(c+' : '+Math.round(p[c][0])+','+Math.round(p[c][1]), np[c][0], np[c][1]);
+			}
 			canvasContext.lineTo(np[c][0],np[c][1]);
 		}
 

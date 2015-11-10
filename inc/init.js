@@ -91,6 +91,7 @@ addLoadEvent(function() {
 	var smc = document.getElementById('saveMillcrum');
 	var omc = document.getElementById('openMillcrum');
 	var odxf = document.getElementById('openDxf');
+	var osvg = document.getElementById('openSvg');
 	var millcrumCode = document.getElementById('millcrumCode');
 
 	var pathInfo = document.getElementById('pathInfo');
@@ -208,7 +209,6 @@ addLoadEvent(function() {
 			}
 
 			var s = 'var tool = {units:"mm",diameter:6.35,passDepth:4,step:1,rapid:2000,plunge:100,cut:600,zClearance:5,returnHome:true};\n\n';
-
 			s += '// setup a new Millcrum object with that tool\nvar mc = new Millcrum(tool);\n\n';
 			s += '// set the surface dimensions for the viewer\nmc.surface('+(dxf.width*1.1)+','+(dxf.height*1.1)+');\n\n\n';
 
@@ -237,6 +237,59 @@ addLoadEvent(function() {
 			}
 
 			s += '\nmc.get();\n';
+
+			// load the new millcrum code
+			millcrumCode.innerHTML = hljs.highlight('javascript',s).value;
+			// convert the .millcrum to gcode
+			generate.click();
+		}
+	});
+
+	// open .svg
+	osvg.addEventListener('change', function(e) {
+		var r = new FileReader();
+		r.readAsText(osvg.files[0]);
+		r.onload = function(e) {
+
+			var svg = new Svg();
+			svg.process(r.result);
+
+			console.log('\n\nall paths',svg.paths);
+
+			if (svg.alerts.length > 0) {
+				var errStr = '';
+				for (a in svg.alerts) {
+					errStr += svg.alerts[a]+'\n\n';
+				}
+				doAlert(errStr, 'SVG Errors:');
+			}
+
+			// now that we have a proper path in absolute coordinates regardless of transforms, matrices or relative/absolute coordinates
+			// we can write out the millcrum (clean) code
+
+			// we need to flip all the y points because svg and cnc are reverse
+			// this way, regardless, what people draw is what they get on the machine
+			// that requires getting the actual min and max, moving everything into the positive
+			// then flipping the y
+
+			// millcrum code holder
+			var s = 'var tool = {units:"mm",diameter:6.35,passDepth:4,step:1,rapid:2000,plunge:100,cut:600,zClearance:5,returnHome:true};\n\n';
+			s += '// setup a new Millcrum object with that tool\nvar mc = new Millcrum(tool);\n\n';
+			s += '// set the surface dimensions for the viewer\nmc.surface('+svg.width+','+svg.height+');\n\n\n';
+
+			// now loop through the paths and write them to mc code
+			for (var c=0; c<svg.paths.length; c++) {
+				s += 'var polygon'+c+' = {type:\'polygon\',name:\'polygon'+c+'\',points:['
+				for (var p=0; p<svg.paths[c].length; p++) {
+					svg.paths[c][p][1] = svg.height-svg.paths[c][p][1];
+					s += '['+svg.paths[c][p][0]+','+svg.paths[c][p][1]+'],';
+				}
+				s += ']};\n';
+				s += 'mc.cut(\'centerOnPath\', polygon'+c+', 4, [0,0]);\n\n'
+			}
+
+
+			s += 'mc.get();\n\n';
 
 			// load the new millcrum code
 			millcrumCode.innerHTML = hljs.highlight('javascript',s).value;
