@@ -3,6 +3,7 @@ var Svg = function() {
 	this.alerts = [];
 	this.width = 0;
 	this.height = 0;
+	this.units = 'mm';
 };
 
 Svg.prototype.process = function(r) {
@@ -16,12 +17,32 @@ Svg.prototype.process = function(r) {
 			// http://www.w3.org/Graphics/SVG/IG/resources/svgprimer.html#simple_objects
 
 			// the first element in the svg has the width and height as an attribute
+			// they may be in one of a few different formats, which are of course unspecified
+			// 100 100px 100mm 100in
+			// we need to split them back into real numbers, then save the unit measure
+			var isNumRe = /^-{0,1}\d*\.{0,1}\d+$/;
 			for (key in node.children[0].attributes) {
 				if (typeof(node.children[0].attributes[key]) == 'object') {
 					if (node.children[0].attributes[key].name == 'width') {
 						this.width = node.children[0].attributes[key].value;
+						if (isNumRe.test(this.width)) {
+							this.width = Number(this.width);
+						} else {
+							// get numbers from string
+							var n = Number(this.width.replace(/\D/g, ''));
+							// split on that to get the unit
+							this.units = this.width.split(n.toString())[1].toLowerCase();
+							// set this.width to n
+							this.width = n;
+						}
 					} else if (node.children[0].attributes[key].name == 'height') {
 						this.height = node.children[0].attributes[key].value;
+						if (isNumRe.test(this.height)) {
+							this.height = Number(this.height);
+						} else {
+							// get numbers from string
+							this.height = Number(this.height.replace(/\D/g, ''));
+						}
 					}
 				}
 			}
@@ -311,10 +332,15 @@ Svg.prototype.cubicBezier = function(b) {
 
 	// get distance to calculate a reasonable number of line segments
 	var dist = dxfLib.distanceFormula(b[0],b[3]);
-	// as it's svg, the values are px
-	// we are assuming 1px = 1mm for your toolchain, if you are using inches this will need to be changed
-	// going to base it on 1 line segment per 5px
-	var numLineSegments = Math.round(dist/5);
+	if (this.units == 'in') {
+		// for inches, assume a .25in bit
+		var numLineSegments = Math.round(dist/.25);
+	} else {
+		// we are assuming 1px = 1mm for your toolchain, if you are using inches change units to in
+		// going to base it on 1 line segment per 5mm for a 6.35mm bit
+		var numLineSegments = Math.round(dist/5);
+	}
+	
 
 	var distances = [dxfLib.distanceFormula(b[0],b[1]),dxfLib.distanceFormula(b[1],b[2]),dxfLib.distanceFormula(b[2],b[3])];
 	// we need the angle of each of the lines in distances to calculate the new points

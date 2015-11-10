@@ -255,6 +255,7 @@ addLoadEvent(function() {
 			svg.process(r.result);
 
 			console.log('\n\nall paths',svg.paths);
+			console.log('svg units '+svg.units);
 
 			if (svg.alerts.length > 0) {
 				var errStr = '';
@@ -275,7 +276,7 @@ addLoadEvent(function() {
 			// millcrum code holder
 			var s = 'var tool = {units:"mm",diameter:6.35,passDepth:4,step:1,rapid:2000,plunge:100,cut:600,zClearance:5,returnHome:true};\n\n';
 			s += '// setup a new Millcrum object with that tool\nvar mc = new Millcrum(tool);\n\n';
-			s += '// set the surface dimensions for the viewer\nmc.surface('+svg.width+','+svg.height+');\n\n\n';
+			s += '// set the surface dimensions for the viewer, svg import specified '+svg.units+'\nmc.surface('+svg.width+','+svg.height+');\n\n\n';
 
 			// now loop through the paths and write them to mc code
 			for (var c=0; c<svg.paths.length; c++) {
