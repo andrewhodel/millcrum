@@ -12,33 +12,10 @@ function addLoadEvent(func) {
   }
 }
 
-function getCaretPosition(editableDiv) {
-  var caretPos = 0,
-    sel, range;
-  if (window.getSelection) {
-    sel = window.getSelection();
-    if (sel.rangeCount) {
-      range = sel.getRangeAt(0);
-      if (range.commonAncestorContainer.parentNode == editableDiv) {
-        caretPos = range.endOffset;
-      }
-    }
-  } else if (document.selection && document.selection.createRange) {
-    range = document.selection.createRange();
-    if (range.parentElement() == editableDiv) {
-      var tempEl = document.createElement("span");
-      editableDiv.insertBefore(tempEl, editableDiv.firstChild);
-      var tempRange = range.duplicate();
-      tempRange.moveToElementText(tempEl);
-      tempRange.setEndPoint("EndToEnd", range);
-      caretPos = tempRange.text.length;
-    }
-  }
-  return caretPos;
-}
-
 var toSaveGcode = '';
 var clickPaths = [];
+var globalSx = 0;
+var globalSy = 0;
 
 var doAlert;
 
@@ -87,6 +64,7 @@ addLoadEvent(function() {
 
 	// setup elements
 	var generate = document.getElementById('generate');
+	var gcviewContainer = document.getElementById('gcview');
 	var sgc = document.getElementById('saveGcode');
 	var smc = document.getElementById('saveMillcrum');
 	var omc = document.getElementById('openMillcrum');
@@ -105,6 +83,9 @@ addLoadEvent(function() {
 	var closeExamples = document.getElementById('closeExamples');
 	var examples = document.getElementById('examples');
 	var examplesLink = document.getElementById('examplesLink');
+
+	gcview.style.width = (window.innerWidth-40)/2+'px';
+	gcview.style.height = (window.innerHeight-40)+'px';
 
 	// update highlightjs when millcrumCode is edited
 	millcrumCode.addEventListener('keyup', function(e) {
@@ -312,7 +293,7 @@ addLoadEvent(function() {
 	});
 
 	// handle dragging
-	var d = document.getElementById('drag');
+	var drag = document.getElementById('drag');
 
 	drag.addEventListener('dragstart', function(e) {
 		var style = window.getComputedStyle(e.target, null);
@@ -340,7 +321,7 @@ addLoadEvent(function() {
 	});
 
 	// move editor to right side
-	d.style.left = window.innerWidth-parseInt(d.style.width)-60 + 'px';
+	drag.style.left = (window.innerWidth/2)-(parseInt(drag.style.width)/2) + 'px';
 
 	doAlert = function(msg, type) {
 
@@ -382,6 +363,11 @@ addLoadEvent(function() {
 
 		// set saveGcode to visible
 		sgc.style.display = 'inline';
+
+		// load gcode in GCView
+		// after re-instantiating it
+		var gcview = new GCView(gcviewContainer);
+		gcview.loadGC(toSaveGcode);
 
 	});
 

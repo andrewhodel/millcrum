@@ -9,8 +9,8 @@ var Svg = function() {
 Svg.prototype.process = function(r) {
 			// use the DOMParser to parse the svg's xml, it's built into the browser
 			var node = new DOMParser().parseFromString(r, 'image/svg+xml');
-			console.log('svg root',node.children);
-			console.log('number of root children',node.children[0].children.length);
+			//console.log('svg root',node.children);
+			//console.log('number of root children',node.children[0].children.length);
 
 			// the primitive objects in svg are
 			// 'path', 'text', 'rect', 'circle', 'ellipse', 'line', 'polyline', 'polygon', 'image' and 'use'
@@ -61,7 +61,7 @@ Svg.prototype.process = function(r) {
 					// it contains various commands, most notable m - moveto, l - lineto, c - curve and z - useless.
 					var val = svgElements[c].attributes['d'].value;
 
-					console.log('\n\nvalid path: ',val);
+					//console.log('\n\nvalid path: ',val);
 
 					// need to apply any transform from this elements transform attribute
 					// as well as any parent transforms all the way to the root g element

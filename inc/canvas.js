@@ -139,13 +139,13 @@ window.onresize = function(e) {
 function init() {
 
 	canv = document.getElementById("container");
-	canv.width = window.innerWidth-40;
-	canv.height = window.innerHeight-40;
+	canv.width = (window.innerWidth-40)/2;
+	canv.height = (window.innerHeight-40);
 
 	// update surface size from input boxes
 	// this will be the maximum size
-	sX = document.getElementById("surfaceX").value;
-	sY = document.getElementById("surfaceY").value;
+	sX = globalSx;
+	sY = globalSy;
 	console.log('surface size: '+sX+','+sY);
 
 	canvasContext = canv.getContext('2d');

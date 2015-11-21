@@ -17,9 +17,11 @@ Millcrum.prototype.addDegrees = function(base,mod) {
 };
 
 Millcrum.prototype.surface = function(x,y) {
-	// set the surface dimensions
-	document.getElementById('surfaceX').value = x;
-	document.getElementById('surfaceY').value = y;
+
+	if (typeof(globalSx) != 'undefined') {
+		globalSx = x;
+		globalSy = y;
+	}
 
 	// run the init function
 	init();

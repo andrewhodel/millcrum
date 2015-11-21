@@ -5,19 +5,27 @@
 <title>Millcrum - Parametric 2.5D GCODE Generator</title>
 <link rel="stylesheet" href="inc/screen.css" />
 <link rel="stylesheet" href="inc/docco-highlight.min.css" />
-<script type="text/javascript" src="inc/init.js"></script>
-<script type="text/javascript" src="inc/canvas.js"></script>
-<script type="text/javascript" src="inc/mc.js"></script>
-<script type="text/javascript" src="inc/dxf.js"></script>
-<script type="text/javascript" src="inc/svg.js"></script>
-<script type="text/javascript" src="inc/highlight.min.js"></script>
+
+<style type="text/css" rel="stylesheet">
+a:link, a:active, a:visited {
+	color: red;
+}
+a:hover {
+	color: black;
+}
+</style>
+
 </head>
 
 <body style="background-color: #ddd;">
 
-<center><canvas width="600" height="600" id="container" style="background-color: #fff; border-radius: 4px; z-index: 1;"></canvas></center>
+<canvas width="600" height="600" id="container" style="background-color: #fff; border-radius: 4px; z-index: 1;"></canvas>
+<div id="gcview" style="float: right; width: 600px; height: 600px; border: 1px solid #000; border-radius: 4px;"></div>
 
-<div id="drag" draggable="true" style="position: absolute; left: 50px; top: 20px; border-radius: 4px; border: 1px solid #333; width: 680px; background-color: #aaa; padding: 6px; z-index: 2; border-top: 20px solid #333;"> <!-- edit window -->
+<div style="position: fixed; top: 20px; left: 20px; color: #000; font-size: 14px;">2D Millcrum View</div>
+<div style="position: fixed; top: 20px; right: 20px; color: #fff; font-size: 14px;">Actual 3D GCODE Toolpath</div>
+
+<div id="drag" draggable="true" style="position: fixed; left: 50px; top: 20px; border-radius: 4px; border: 1px solid #333; width: 680px; background-color: #aaa; padding: 6px; z-index: 2; border-top: 20px solid #333;"> <!-- edit window -->
 
 	<div style="float: left; padding: 6px; clear: both;"> <!-- left buttons -->
 
@@ -26,13 +34,6 @@
 		Import .svg <input id="openSvg" type="file" />
 
 	</div> <!-- end left buttons -->
-
-	<div style="float: right; margin: 4px; text-align: right;"> <!-- right xy surface size inputs -->
-
-		<span style="color: blue;">X</span> <input style="width: 35px;" id="surfaceX" value="1000" />
-		<span style="color: red;">Y</span> <input style="width: 35px;" id="surfaceY" value="600" />
-
-	</div> <!-- end right xy surface size inputs -->
 
 	<div style="float: left; padding: 6px;"> <!-- left buttons -->
 
@@ -83,6 +84,18 @@
 <br style="clear: both;" />
 <span id="alertText" style="white-space: pre-wrap; font-family: monospace;"></span>
 </div>
+
+<script type="text/javascript" src="inc/three.min.js"></script>
+<script type="text/javascript" src="inc/TrackballControls.js"></script>
+<script type="text/javascript" src="inc/Projector.js"></script>
+<script type="text/javascript" src="inc/CanvasRenderer.js"></script>
+<script type="text/javascript" src="inc/GCView.js"></script>
+<script type="text/javascript" src="inc/mc.js"></script>
+<script type="text/javascript" src="inc/dxf.js"></script>
+<script type="text/javascript" src="inc/svg.js"></script>
+<script type="text/javascript" src="inc/highlight.min.js"></script>
+<script type="text/javascript" src="inc/init.js"></script>
+<script type="text/javascript" src="inc/canvas.js"></script>
 
 </body>
 
