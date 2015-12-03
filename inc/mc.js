@@ -2,6 +2,9 @@ var Millcrum = function(tool) {
 	this.gcode = '';
 	this.debug = false;
 	this.tool = tool;
+
+	this.svgLib = new Svg();
+
 };
 
 Millcrum.prototype.addDegrees = function(base,mod) {
@@ -477,7 +480,7 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 		for (var c=0; c<obj.points.length; c++) {
 
 			// except in the case where one of the "points" is an arc
-			if (typeof(obj.points[c]['type']) != 'undefined') {
+			if (obj.points[c].type == 'arc') {
 				// this is an arc
 				//console.log('## ARC IN POLYGON AT '+c+'##');
 
@@ -503,6 +506,13 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 					// we don't need the first as there is already a user defined point there so a=1
 					//console.log('adding ',[arcPath[a][0]+xDiff,arcPath[a][1]+yDiff]);
 					basePath.push([arcPath[a][0]+xDiff,arcPath[a][1]+yDiff]);
+				}
+
+			} else if (obj.points[c].type == 'cubicBezier') {
+
+				var bez = this.svgLib.cubicBezier(obj.points[c].points);
+				for (r in bez) {
+					basePath.push(bez[r]);
 				}
 
 			} else {
@@ -546,6 +556,7 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 	// per the inside path generation algorithm we need to ensure that the starting point of the polygon is
 	// on the outer bounds of the path, see bug #4 on Github
 	var safeStartingPoint = 0;
+	var s = '';
 
 	for (var c=0; c<basePath.length; c++) {
 

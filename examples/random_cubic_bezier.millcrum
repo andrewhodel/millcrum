@@ -1,0 +1,27 @@
+var tool = {units:'mm',diameter:6.35,passDepth:1,step:1,rapid:2000,plunge:100,cut:600,zClearance:5,returnHome:true};
+
+// setup a new Millcrum object with that tool
+var mc = new Millcrum(tool);
+
+// set the surface dimensions for the viewer
+mc.surface(20,20);
+
+var cp1y = Math.floor((Math.random() * 10) + 1); // between 0 and 10;
+var cp2x = Math.floor((Math.random() * 10) + 1); // between 0 and 10;
+
+var pt = {type:'polygon',points:[
+	[0,0],
+	[10,0],
+	[10,10],
+	// bezier
+	// first point (same as last point) in curve
+	// point of control point for first point in curve
+	// point of control point for last point in curve
+	// last point
+	{type:'cubicBezier',points:[[10,10],[10,cp1y],[cp2x,0],[0,0]]},
+]};
+
+mc.cut('centerOnPath', pt, 4, [0,0]);
+
+// get the gcode
+mc.get();

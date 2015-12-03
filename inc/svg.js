@@ -333,14 +333,13 @@ Svg.prototype.cubicBezier = function(b) {
 	// get distance to calculate a reasonable number of line segments
 	var dist = dxfLib.distanceFormula(b[0],b[3]);
 	if (this.units == 'in') {
-		// for inches, assume a .25in bit
-		var numLineSegments = Math.round(dist/.25);
+		// for inches, assume a .25in bit with 10 lines segments per diameter
+		var numLineSegments = Math.round(dist/(.25/10));
 	} else {
 		// we are assuming 1px = 1mm for your toolchain, if you are using inches change units to in
-		// going to base it on 1 line segment per 5mm for a 6.35mm bit
-		var numLineSegments = Math.round(dist/5);
+		// going to base it on 10 line segments for a 6.35mm bit
+		var numLineSegments = Math.round(dist/(6.35/10));
 	}
-	
 
 	var distances = [dxfLib.distanceFormula(b[0],b[1]),dxfLib.distanceFormula(b[1],b[2]),dxfLib.distanceFormula(b[2],b[3])];
 	// we need the angle of each of the lines in distances to calculate the new points
