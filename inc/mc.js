@@ -369,6 +369,16 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 			config.tabWidth = this.tool.diameter*2;
 		}
 	}
+	// Roughing offset. A 'rough' pass will cut slightly less material, allowing
+	// a 'finish' pass that can remove the remaining material.
+	// You can specify 'true' for the default value of 0.1mm, or specify your
+	// own value.
+	if (typeof(config.roughOffset) == 'undefined') {
+		config.roughOffset = 0;
+	} else if (config.roughOffset == true) {
+		config.roughOffset = 0.1;
+	}
+	if (typeof(config.passDepth) == 'undefined') {
 
 	//console.log('generating cut operation:');
 	//console.log('##tool##');
@@ -648,17 +658,17 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 		// copy basePath to toolPath
 		toolPath = basePath;
 	} else if (cutType == 'outside') {
-		toolPath = this.generateOffsetPath(cutType,basePath,this.tool.diameter/2);
+		toolPath = this.generateOffsetPath(cutType,basePath,config.roughOffset+(this.tool.diameter/2));
 	} else if (cutType == 'inside') {
 		if (obj.type == 'circle' && obj.r*2 == this.tool.diameter) {
 			// this is a circle which is the size of the tool, no need to create an offset
 			toolPath = basePath;
 		} else {
-			toolPath = this.generateOffsetPath(cutType,basePath,this.tool.diameter/2);
+			toolPath = this.generateOffsetPath(cutType,basePath,config.roughOffset+(this.tool.diameter/2));
 		}
 	} else if (cutType == 'pocket') {
 		// this needs to loop over and over until it meets the center
-		toolPath = this.generateOffsetPath('inside',basePath,this.tool.diameter/2);
+		toolPath = this.generateOffsetPath('inside',basePath,config.roughOffset+(this.tool.diameter/2));
 		//console.log('smallestAxis: '+smallestAxis);
 		var previousPath = toolPath;
 
