@@ -379,6 +379,8 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 		config.roughOffset = 0.1;
 	}
 	if (typeof(config.passDepth) == 'undefined') {
+		config.passDepth = this.tool.passDepth;
+	}
 
 	//console.log('generating cut operation:');
 	//console.log('##tool##');
@@ -718,10 +720,10 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 	this.gcode += '\n; PATH FOR "'+obj.name+'" '+obj.type+' WITH '+cutType+' CUT\n';
 
 	// calculate the number of Z passes
-	var numZ = Math.ceil(depth/this.tool.passDepth);
+	var numZ = Math.ceil(depth/config.passDepth);
 
 	// comment with Z information
-	this.gcode += '; total Z cut depth of '+depth+' with passDepth of '+this.tool.passDepth+' yields '+numZ+' total passes\n';
+	this.gcode += '; total Z cut depth of '+depth+' with passDepth of '+config.passDepth+' yields '+numZ+' total passes\n';
 
 	// move to zClearance
 	this.gcode += '\n; MOVING TO this.tool.zClearance\n';
@@ -736,13 +738,13 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 	for (z=1; z<=numZ; z++) {
 
 		// calc Z for this pass
-		if (zPos-this.tool.passDepth < -depth) {
+		if (zPos-config.passDepth < -depth) {
 			// this is a partial pass which would mean it is the final pass
 			// set zPos to -depth
 			zPos = -depth;
 		} else {
-			// this is a full pass, go down another this.tool.passDepth
-			zPos = zPos-this.tool.passDepth;
+			// this is a full pass, go down another config.passDepth
+			zPos = zPos-config.passDepth;
 		}
 			
 		// comment for pass
@@ -763,7 +765,7 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 			// in the event that the tabHeight is greater than tool.passDepth,
 			// multiple layers would have to account for tabs
 			// numZ is the total number of Z layers
-			} else if (this.tool.passDepth*(numZ-z) <= config.tabHeight && config.tabs == true) {
+			} else if (config.passDepth*(numZ-z) <= config.tabHeight && config.tabs == true) {
 				console.log('creating tabs for Z pass '+z);
 				// we need to create the tabs for this layer
 				// tabs are only created on straight line sections
