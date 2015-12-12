@@ -878,9 +878,10 @@ Millcrum.prototype.get = function() {
 
 	// returnHome if set
 	// this needs to be moved outside of the object and at the end of all objects
+	// don't return to Z0 -- as stay at the clearance height
 	if (this.tool.returnHome == true) {
-		this.gcode += '\n; RETURNING TO 0,0,0 BECAUSE this.tool.returnHome IS SET\n';
-		this.gcode += 'G0 F'+this.tool.rapid+' X0 Y0 Z0\n';
+		this.gcode += '\n; RETURNING TO 0,0 BECAUSE this.tool.returnHome IS SET\n';
+		this.gcode += 'G0 F'+this.tool.rapid+' X0 Y0\n';
 	}
 
 	//console.log(this.gcode);
