@@ -372,6 +372,18 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 			config.tabWidth = this.tool.diameter*2;
 		}
 	}
+	// Roughing offset. A 'rough' pass will cut slightly less material, allowing
+	// a 'finish' pass that can remove the remaining material.
+	// You can specify 'true' for the default value of 0.1mm, or specify your
+	// own value.
+	if (typeof(config.roughOffset) == 'undefined') {
+		config.roughOffset = 0;
+	} else if (config.roughOffset == true) {
+		config.roughOffset = 0.1;
+	}
+	if (typeof(config.passDepth) == 'undefined') {
+		config.passDepth = this.tool.passDepth;
+	}
 
 	//console.log('generating cut operation:');
 	//console.log('##tool##');
@@ -659,17 +671,17 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 		// copy basePath to toolPath
 		toolPath = basePath;
 	} else if (cutType == 'outside') {
-		toolPath = this.generateOffsetPath(cutType,basePath,this.tool.diameter/2);
+		toolPath = this.generateOffsetPath(cutType,basePath,config.roughOffset+(this.tool.diameter/2));
 	} else if (cutType == 'inside') {
 		if (obj.type == 'circle' && obj.r*2 == this.tool.diameter) {
 			// this is a circle which is the size of the tool, no need to create an offset
 			toolPath = basePath;
 		} else {
-			toolPath = this.generateOffsetPath(cutType,basePath,this.tool.diameter/2);
+			toolPath = this.generateOffsetPath(cutType,basePath,config.roughOffset+(this.tool.diameter/2));
 		}
 	} else if (cutType == 'pocket') {
 		// this needs to loop over and over until it meets the center
-		toolPath = this.generateOffsetPath('inside',basePath,this.tool.diameter/2);
+		toolPath = this.generateOffsetPath('inside',basePath,config.roughOffset+(this.tool.diameter/2));
 		//console.log('smallestAxis: '+smallestAxis);
 		var previousPath = toolPath;
 
@@ -719,10 +731,10 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 	this.gcode += '\n; PATH FOR "'+obj.name+'" '+obj.type+' WITH '+cutType+' CUT\n';
 
 	// calculate the number of Z passes
-	var numZ = Math.ceil(depth/this.tool.passDepth);
+	var numZ = Math.ceil(depth/config.passDepth);
 
 	// comment with Z information
-	this.gcode += '; total Z cut depth of '+depth+' with passDepth of '+this.tool.passDepth+' yields '+numZ+' total passes\n';
+	this.gcode += '; total Z cut depth of '+depth+' with passDepth of '+config.passDepth+' yields '+numZ+' total passes\n';
 
 	// move to zClearance
 	this.gcode += '\n; MOVING TO this.tool.zClearance\n';
@@ -737,13 +749,13 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 	for (z=1; z<=numZ; z++) {
 
 		// calc Z for this pass
-		if (zPos-this.tool.passDepth < -depth) {
+		if (zPos-config.passDepth < -depth) {
 			// this is a partial pass which would mean it is the final pass
 			// set zPos to -depth
 			zPos = -depth;
 		} else {
-			// this is a full pass, go down another this.tool.passDepth
-			zPos = zPos-this.tool.passDepth;
+			// this is a full pass, go down another config.passDepth
+			zPos = zPos-config.passDepth;
 		}
 			
 		// comment for pass
@@ -764,7 +776,7 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 			// in the event that the tabHeight is greater than tool.passDepth,
 			// multiple layers would have to account for tabs
 			// numZ is the total number of Z layers
-			} else if (this.tool.passDepth*(numZ-z) <= config.tabHeight && config.tabs == true) {
+			} else if (config.passDepth*(numZ-z) <= config.tabHeight && config.tabs == true) {
 				console.log('creating tabs for Z pass '+z);
 				// we need to create the tabs for this layer
 				// tabs are only created on straight line sections
@@ -877,9 +889,10 @@ Millcrum.prototype.get = function() {
 
 	// returnHome if set
 	// this needs to be moved outside of the object and at the end of all objects
+	// don't return to Z0 -- as stay at the clearance height
 	if (this.tool.returnHome == true) {
-		this.gcode += '\n; RETURNING TO 0,0,0 BECAUSE this.tool.returnHome IS SET\n';
-		this.gcode += 'G0 F'+this.tool.rapid+' X0 Y0 Z0\n';
+		this.gcode += '\n; RETURNING TO 0,0 BECAUSE this.tool.returnHome IS SET\n';
+		this.gcode += 'G0 F'+this.tool.rapid+' X0 Y0\n';
 	}
 
 	//console.log(this.gcode);
