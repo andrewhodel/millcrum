@@ -120,7 +120,7 @@ Dxf.prototype.handleEntities = function(d) {
 	// each entity starts with '  0' then the next line is the type of entity
 	var currentEntity = {type:'',lines:[]};
 
-	var entitiesToKeep = ['lwpolyline','polyline','line','circle','arc'];
+	var entitiesToKeep = ['lwpolyline','polyline','line','circle','arc','spline'];
 
 	var totalEntities = 0;
 
@@ -179,6 +179,8 @@ Dxf.prototype.handleEntities = function(d) {
 							this.handlePolyline(currentEntity);
 						} else if (entitiesToKeep[i] == 'circle' || entitiesToKeep[i] == 'arc') {
 							this.handleArc(currentEntity);
+						} else if (entitiesToKeep[i] == 'spline') {
+							this.handleSpline(currentEntity);
 						}
 						totalEntities++;
 
@@ -291,6 +293,10 @@ Dxf.prototype.handleArc = function(d) {
 		}
 	}
 
+};
+
+Dxf.prototype.handleSpline = function(d) {
+	this.alerts.push('Unsupported spline, try "Extensions -> Modify Path -> Flatten Bezier" in Inkscape to convert all splines to polylines in a DXF');
 };
 
 Dxf.prototype.handleLine = function(d) {
