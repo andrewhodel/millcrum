@@ -55,7 +55,13 @@ addLoadEvent(function() {
 
 		if (smallestAreaPath > -1) {
 			pathInfoText.innerHTML = 'Name: '+clickPaths[smallestAreaPath].name+'\nCut Type: <span style="color: #00008b;">'+clickPaths[smallestAreaPath].cutType+'</span>\nDepth: '+clickPaths[smallestAreaPath].depth+'\nDirection: '+clickPaths[smallestAreaPath].pathDir+'\nArea: ~'+clickPaths[smallestAreaPath].signedArea+'\nStart Point: X'+clickPaths[smallestAreaPath].startPoint[0]+' Y'+clickPaths[smallestAreaPath].startPoint[1]+'\n';
-			pathInfo.style.left = e.pageX-220 + 'px';
+			if (e.pageX-220 < 0) {
+				// set the popup on the right side of the mouse
+				pathInfo.style.left = e.pageX + 'px';
+			} else {
+				// set the popup on the left side of the mouse
+				pathInfo.style.left = e.pageX-220 + 'px';
+			}
 			pathInfo.style.top = e.pageY + 'px';
 			pathInfo.style.display = 'block';
 		}
@@ -185,8 +191,11 @@ addLoadEvent(function() {
 				}
 			}
 
+			// add an alert about DXF scaling
+			errStr += 'If the scale is off, open the file in Inkscape, go to File -> Document Properties and set the Display Units to px, Units to px, Scale x to 1 and Scale y to 1.  Then when you save the file, make sure the Base unit is px, use Save as if that window does not show.';
+
 			if (errStr != '') {
-				doAlert(errStr,'DXF Errors:');
+				doAlert(errStr, 'DXF Errors:');
 			}
 
 			var s = 'var tool = {units:"mm",diameter:6.35,passDepth:4,step:1,rapid:2000,plunge:100,cut:600,zClearance:5,returnHome:true};\n\n';
@@ -200,7 +209,7 @@ addLoadEvent(function() {
 					dxf.polylines[c].layer = 'polyline'+c;
 				}
 				s += '//LAYER '+dxf.polylines[c].layer+'\n';
-				s += 'var polyline'+c+' = {type:\'polygon\',name:\''+dxf.polylines[c].layer+'\',points:[';
+				s += 'var polyline'+c+' = {type:\'polygon\',name:\'polyline'+c+'\',points:[';
 				for (var p=0; p<dxf.polylines[c].points.length; p++) {
 					s += '['+dxf.polylines[c].points[p][0]+','+dxf.polylines[c].points[p][1]+'],';
 				}
@@ -267,7 +276,7 @@ addLoadEvent(function() {
 					s += '['+svg.paths[c][p][0]+','+svg.paths[c][p][1]+'],';
 				}
 				s += ']};\n';
-				s += 'mc.cut(\'centerOnPath\', polygon'+c+', 4, [0,0]);\n\n'
+				s += 'mc.cut(\'outside\', polygon'+c+', 4, [0,0]);\n\n'
 			}
 
 
@@ -358,7 +367,7 @@ addLoadEvent(function() {
 			eval(mcCode);
 		} catch (e) {
 			// log it to the alert window
-			doAlert(e,'Millcrum Code Error:');
+			doAlert(e, 'Error with code sent to Millcrum:');
 		}
 
 		// set saveGcode to visible

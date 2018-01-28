@@ -104,7 +104,7 @@ Dxf.prototype.handleHeader = function(d) {
 	// loop through the header and pull out info we want
 	for (var c=0; c<d.length; c++) {
 		if (d[c] == '$acadver') {
-			console.log('autocad drawing database version '+d[c+1]);
+			//console.log('autocad drawing database version '+d[c+1]);
 			// no need to continue parsing the header until we want more data
 			// some editors don't even include a header section!
 			break;
@@ -369,8 +369,6 @@ Dxf.prototype.handlePolyline = function(d, isPoints) {
 	if (typeof(isPoints) == 'undefined') {
 		var isPoints = false;
 	}
-
-	//console.log('handlePolyline',d);
 
 	var singleEntity = {layer:'',points:[]};
 
@@ -679,7 +677,7 @@ Dxf.prototype.parseDxf = function(d) {
 	var sections = [];
 	var currentSection = [];
 
-	console.log('parsing dxf sections');
+	//console.log('parsing dxf sections');
 
 	// first loop through and find all the sections
 	for (var c = 0; c < l.length; c++) {
@@ -716,133 +714,140 @@ Dxf.prototype.parseDxf = function(d) {
 	this.height = this.maxPoint[1] - this.minPoint[1];
 	this.avgSize = (this.width+this.height)/2;
 
+	var lineMatches = [];
+	for (var c=0; c<this.lines.length; c++) {
+		lineMatches.push(0);
+		// check for point matches in all other lines
+		for (var p=0; p<this.lines.length; p++) {
+			if (c == p) {
+				// same line
+			} else if (this.lines[c][0] == this.lines[p][0] && this.lines[c][1] == this.lines[p][1]) {
+				// first points match each other
+				lineMatches[c]++;
+			} else if (this.lines[c][0] == this.lines[p][3] && this.lines[c][1] == this.lines[p][4]) {
+				// first point of line c matches second point of line p
+				lineMatches[c]++;
+			} else if (this.lines[c][3] == this.lines[p][0] && this.lines[c][4] == this.lines[p][1]) {
+				// second point of line c matches first point of line p
+				lineMatches[c]++;
+			} else if (this.lines[c][3] == this.lines[p][3] && this.lines[c][4] == this.lines[p][4]) {
+				// second points match each other
+				lineMatches[c]++;
+			}
+		}
+	}
+
+	//console.log('lineMatches', lineMatches);
+
+	// a line with no matches is just a line in space
+	// a line with 1 match can only be part of an open path
+	// lines with 2 matches can make a polygon
+	// lines with more than 2 matches must be part of one polygon which shares a point with another polygon
+
 	// now we can loop through all the lines and make polylines for all
-	// lines which share a common end to next start point, procedurally
+	// lines which share 2 points
+	var newPolylines = [];
 
-	// this only converts lines to polylines when points match exactly
-	// there is no rounding and if 2 points are off by even .0000000001
-	// they will not convert as who knows what scale things are at
-	// edit your DXF's correctly
+	// we need to find where each line with 2 matches fits in between 2 other lines
+	// so the end point of one line needs to match the start point of this line
+	// and the start point of this line needs to match the end point of this line
 
-	// this holds the lines we will remove which were turned into polylines
-	var removeLines = [];
-
-	for (var c=0; c<this.lines.length; c++) {
-
-		var tempPolyline = [];
-		var startLine = 0;
-
-		try {
-
-		// if this lines end point and the next lines start point are the same
-		if (this.lines[c][3] == this.lines[c+1][0] && this.lines[c][4] == this.lines[c+1][1]) {
-
-			startLine = c;
-			// this line and the next line are connected
-			// add this line start point
-			tempPolyline.push([this.lines[c][0],this.lines[c][1]]);
-			// add next line start point
-			tempPolyline.push([this.lines[c+1][0],this.lines[c+1][1]]);
-			// add next line end point
-			tempPolyline.push([this.lines[c+1][3],this.lines[c+1][4]]);
-			c++;
-			// while this lines end point and the next lines start point remain the same
-			for (var r=c; r<this.lines.length-1; r++) {
-				if (this.lines[c][3] == this.lines[c+1][0] && this.lines[c][4] == this.lines[c+1][1]) {
-					// add the next lines start point
-					//tempPolyline.push([this.lines[c+1][0],this.lines[c+1][1]]);
-					// add the next lines end point
-					tempPolyline.push([this.lines[c+1][3],this.lines[c+1][4]]);
-					c++;
-				}
-			}
-
-			// if the previous lines end point equals the first lines start point
-			if (tempPolyline[0][0] == tempPolyline[tempPolyline.length-1][0] && tempPolyline[0][1] == tempPolyline[tempPolyline.length-1][1]) {
-				// we know it's a valid polygon
-
-				// remove all those lines from this.lines
-				removeLines.push([startLine,c-startLine]);
-
-				// add tempPolyline to this.polylines
-				this.polylines.push({layer:'',points:tempPolyline});
-
-			}
+	for (var c=this.lines.length-1; c>=0; c--) {
+		if (lineMatches[c] < 1) {
+			// line is not part of a closed polygon, just leave it as a line
+			continue;
+		}
+		if (newPolylines.length == 0) {
+			// just add this line to a new polyline because it is the first line
+			// line coordinates are [x1, y1, z1, x2, y2, z2]
+			newPolylines.push([[this.lines[c][0], this.lines[c][1]], [this.lines[c][3], this.lines[c][4]]]);
+			// remove the line
+			this.lines.splice(c, 1);
 		} else {
+			// as we are sure this line has 2 or more matches
+			// we are positive that we will find a line or a part of a newPolyline that has an end point matching this lines start point
+			// and a line or a part of a newPolyline that has a start point matching this lines end point
+			//
+			// first search through each polyline to see if the start or end points line up
 
-			// here we can check if the points were close and inform the user
-			// that these points were close but not exact so we couldn't form a polyline
-
-			//if (this.terneryDiff(this.lines[c][3],this.lines[c+1][0]) < this.avgSize/20 && this.terneryDiff(this.lines[c][4],this.lines[c+1][1]) < this.avgSize/20) {
-			var pointDiff = this.distanceFormula([this.lines[c][3],this.lines[c][4]], [this.lines[c+1][0],this.lines[c+1][1]]);
-			if (pointDiff < this.avgSize/20) {
-				this.alerts.push('line'+c+' and line'+Number(c+1)+' could be part of a polyline they are '+pointDiff+' units away from one another.  Make lines start and end at the exact same point and they will form polylines.');
-			}
-
-		}
-
-		} catch (err) {
-			console.log(err);
-			console.log(this.lines.length,c);
-			console.log(this.lines[c]);
-		}
-
-	}
-
-	for (var c=0; c<removeLines.length; c++) {
-		for (var r=0; r<removeLines[c][1]+1; r++) {
-			delete this.lines[removeLines[c][0]+r];
-		}
-	}
-
-	// reset the array index after deleting
-	this.lines = this.lines.filter(function(){return true;});
-
-/*
-
-	// this is a WIP way of connecting lines which are not ordered
-	// it is more procedural when ordered
-	// this needs to be completed because lines may be drawn out of order
-	// and probably are for most drawings
-
-	// this is an array of lines which have common lines
-	var commonLines = [];
-
-	console.log('lines',this.lines);
-
-	for (var c=0; c<this.lines.length; c++) {
-
-		// with each start and end point of each line
-		// we need to loop through every _other_ line to see
-		// if there is a match
-		for (var d=0; d<this.lines.length; d++) {
-
-			if (d == c) {
-				// we do not need to check on the line we are checking on (first loop)
-			} else {
-				// check if this line _d_ shares a point with _c_
-				// (first line x1 == second line x1 && first line y1 == second line y1) ||
-				// (first line x1 == second line x2 && first line y1 == second line y2) ||
-				// (first line x2 == second line x1 && first line y2 == second line y1) ||
-				// (first line x2 == second line x2 && first line y2 == second line y2)
-				if ((this.lines[c][0] == this.lines[d][0] && this.lines[c][1] == this.lines[d][1]) || (this.lines[c][0] == this.lines[d][3] && this.lines[c][1] == this.lines[d][4]) || (this.lines[c][3] == this.lines[d][0] && this.lines[c][4] == this.lines[d][1]) || (this.lines[c][3] == this.lines[d][3] && this.lines[c][4] == this.lines[d][4])) {
-					// they share a point
-					if (!commonLines[c]) {
-						// create an entry in commonLines for this _c_ point if it does not exist
-						commonLines[c] = [];
-					}
-					// add this _d_ point as a common line to c
-					commonLines[c].push(d);
+			var connected_to_polyline = false;
+			for (var n=0; n<newPolylines.length; n++) {
+				if (newPolylines[n][0][0] == this.lines[c][3] && newPolylines[n][0][1] == this.lines[c][4]) {
+					// this polyline has a start point which matches this lines end point
+					// so this line's first point needs to be added to the start of this polyline
+					newPolylines[n].unshift([this.lines[c][0], this.lines[c][1]]);
+					this.lines.splice(c, 1);
+					connected_to_polyline = true;
+					break;
+				} else if (newPolylines[n][newPolylines[n].length-1][0] == this.lines[c][0] && newPolylines[n][newPolylines[n].length-1][1] == this.lines[c][1]) {
+					// this polyline has an end point which matches this lines start point
+					// so this line's last point needs to be added to the end of this polyline
+					newPolylines[n].push([this.lines[c][3], this.lines[c][4]]);
+					this.lines.splice(c, 1);
+					connected_to_polyline = true;
+					break;
 				}
 			}
 
+			if (!connected_to_polyline) {
+				// this line did not connect to an existing polyline
+				// create a new polyline
+				newPolylines.push([[this.lines[c][0], this.lines[c][1]], [this.lines[c][3], this.lines[c][4]]]);
+				this.lines.splice(c, 1);
+			}
 		}
-
 	}
 
-	console.log('commonLines',commonLines);
-*/
+	var joinPolylines = function() {
+		var joined = false;
+		// the newPolylines may need to be joined, because the lines may have been out of order
+		for (var c=newPolylines.length-1; c>=0; c--) {
+			for (var n=0; n<newPolylines.length; n++) {
+				if (n == c) {
+					continue;
+				} else if (newPolylines[c][0][0] == newPolylines[n][newPolylines[n].length-1][0] && newPolylines[c][0][1] == newPolylines[n][newPolylines[n].length-1][1]) {
+					// the start of polyline c matches the end of polyline n, so polyline c needs to be added to the start of polyline n
+					//
+					// first remove the last point from polyline c
+					newPolylines[c].splice(-1, 1)
+					// then add the points in polyline c to the start of polyline n
+					for (var j=newPolylines[c].length-1; j>=0; j--) {
+					newPolylines[n].unshift(newPolylines[c][j]);
+					}
+					newPolylines.splice(c, 1);
+					joined = true;
+					break;
+				} else if (newPolylines[c][newPolylines[c].length-1][0] == newPolylines[n][0][0] && newPolylines[c][newPolylines[c].length-1][1] == newPolylines[n][0][1]) {
+					// the end of polyline c matches the start of polyline n, so polyline c needs to be added to the end of polyline n
+					//
+					// first remove the first point from polyline c
+					newPolylines[c].splice(0, 1)
+					// then add the points in polyline c to the end of polyline n
+					for (var j=0; j<newPolylines[c].length; j++) {
+						newPolylines[n].push(newPolylines[c][j]);
+					}
+					newPolylines.splice(c, 1);
+					joined = true;
+					break;
+				}
+			}
+		}
+		return joined;
+	}
 
-	//console.log(this);
+	while (true) {
+		// recursively run joinPolylines() until it returns false
+		// indicating that there were no more polylines that could be joined together
+		//console.log('joinPolylines()');
+		if (joinPolylines() == false) {
+			break;
+		}
+	}
+
+	for (var c=0; c<newPolylines.length; c++) {
+		this.polylines.push({layer:'', points: newPolylines[c]});
+	}
+
+	console.log(this);
 
 };
