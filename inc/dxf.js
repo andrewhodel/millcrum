@@ -722,8 +722,8 @@ Dxf.prototype.parseDxf = function(d) {
 		}
 
 		// otherwise, test if the point is within the closeness threshold
-		// which is 6.35, a normal 1/4 inch tool bit
-		var max_join_distance = 6.35;
+		// which is 6.35/8, a normal 1/32 inch tool bit
+		var max_join_distance = 6.35/8;
 
 		//console.log('max_join_distance', max_join_distance);
 
