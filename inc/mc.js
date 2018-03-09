@@ -180,7 +180,6 @@ Millcrum.prototype.generateOffsetPath = function(type, basePath, offsetDistance)
 	// offsetDistance determines how far away it is
 
 	//console.log('##GENERATING OFFSET PATH##');
-	//console.log('');
 
 	// first create an array of midpoints and angles for the offset path
 	var newMidpoints = [];
@@ -188,14 +187,20 @@ Millcrum.prototype.generateOffsetPath = function(type, basePath, offsetDistance)
 	longestLine = 0;
 
 	for (var c=1; c<basePath.length; c++) {
-
 		// we are looping through each point starting with 1 instead of 0
 		// which means using currentPoint and previousPoint we are looping through
 		// each line segment starting with the first
 
-		var currentPoint = basePath[c];
 		var previousPoint = basePath[c-1];
-		//console.log('##LINE '+c+' from '+previousPoint[0]+','+previousPoint[1]+' to '+currentPoint[0]+','+currentPoint[1]+'##');
+		var currentPoint = basePath[c];
+
+		// get the length of the line
+		var len = this.distanceFormula(currentPoint,previousPoint);
+
+		if (len < .01) {
+			// any line this short we just skip, if not rounding errors will occur and offset paths will be messed up
+			continue;
+		}
 
 		// get the deltas for X and Y to calculate the line angle with atan2
 		var deltaX = currentPoint[0]-previousPoint[0];
@@ -203,13 +208,10 @@ Millcrum.prototype.generateOffsetPath = function(type, basePath, offsetDistance)
 
 		// get the line angle
 		var ang = Math.atan2(deltaY,deltaX);
-		//console.log('  ANGLE '+ang+' or '+(ang*180/Math.PI));
 
 		// convert it to degrees for later math with addDegree
 		ang = ang*180/Math.PI;
-
-		// get the length of the line
-		var len = this.distanceFormula(currentPoint,previousPoint);
+		//console.log('\n##LINE '+c+' at '+Math.round(ang)+' degrees from '+previousPoint[0]+', '+previousPoint[1]+' to '+currentPoint[0]+', '+currentPoint[1]+'##');
 		//console.log('  LENGTH '+len);
 
 		if (len > longestLine) {
@@ -239,14 +241,19 @@ Millcrum.prototype.generateOffsetPath = function(type, basePath, offsetDistance)
 		//console.log('  line midpoint');
 		//console.log(midpoint);
 
+		// draw the midpoint for testing
+		//drawPath([midpoint], this.tool, 'centerOnPath', 20, true, c);
+
 		// now we need the new midpoint for pathAng
 		// from midpoint with the this.tool.diameter/2 for a distance
 		var movedLineMidPoint = this.newPointFromDistanceAndAngle(midpoint,movedLineAng,offsetDistance);
 		//console.log('  movedLineMidPoint');
 		//console.log(movedLineMidPoint);
-		//console.log('');
 
 		newMidpoints.push([movedLineMidPoint,ang]);
+
+		// draw the offset midpoint for testing
+		//drawPath([movedLineMidPoint], this.tool, 'centerOnPath', 20, true, c);
 
 	}
 
@@ -704,6 +711,80 @@ Millcrum.prototype.cut = function(cutType, obj, depth, startPos, config) {
 
 	//console.log('##toolPath##');
 	//console.log(toolPath);
+	var x_line_on_y_zero = false;
+	var y_line_on_x_zero = false;
+	var x_line_on_y_limit = false;
+	var y_line_on_x_limit = false;
+
+	// now limit the toolPath to be no less than 0,0
+
+	// first check if all points in this path are outside 0,0, if so then don't actually cut this path
+	var number_outside = 0;
+	for (var c=toolPath.length-1; c>=0; c--) {
+		if (toolPath[c][0] < 0|| toolPath[c][1] < 0) {
+			number_outside++;
+		}
+	}
+
+	if (number_outside == toolPath.length) {
+		return;
+	}
+
+	//console.log('checking for points outside the limit');
+
+	// now remove points that are outside the limit, because we know this path has points inside the limit
+	for (var c=toolPath.length-1; c>=0; c--) {
+		if (toolPath[c][0] < 0 && toolPath[c][1] < 0) {
+			toolPath.splice(c, 1);
+		} else if (toolPath[c][0] < 0) {
+			y_line_on_x_zero = true;
+			toolPath[c][0] = 0;
+		} else if (toolPath[c][1] < 0) {
+			x_line_on_y_zero = true;
+			toolPath[c][1] = 0;
+		}
+	}
+
+	// now limit the toolPath to be no greater than xLimit and yLimit, this is useful for sheeting
+	if (typeof(this.tool.limitX) != 'undefined' && typeof(this.tool.limitY) != 'undefined') {
+
+		// first check if all points in this path are outside the limit, if so then don't actually cut this path
+		var number_outside = 0;
+		for (var c=toolPath.length-1; c>=0; c--) {
+			if (toolPath[c][0] > this.tool.limitX || toolPath[c][1] > this.tool.limitY) {
+				number_outside++;
+			}
+		}
+
+		if (number_outside == toolPath.length) {
+			return;
+		}
+
+		//console.log('checking for points outside the limit');
+
+		// now remove points that are outside the limit, because we know this path has points inside the limit
+		for (var c=toolPath.length-1; c>=0; c--) {
+			if (toolPath[c][0] > this.tool.limitX && toolPath[c][1] > this.tool.limitY) {
+				toolPath.splice(c, 1);
+			} else if (toolPath[c][0] > this.tool.limitX) {
+				y_line_on_x_limit = true;
+				toolPath[c][0] = this.tool.limitX;
+			} else if (toolPath[c][1] > this.tool.limitY) {
+				x_line_on_y_limit = true;
+				toolPath[c][1] = this.tool.limitY;
+			}
+		}
+	}
+
+	// now clean up the lines which are drawn for the 4 limits
+	// 	x line on y0
+	// 	y line on x0
+	// 	x line on yLimit
+	// 	y line on xLimit
+	//console.log('x_line_on_y_zero', x_line_on_y_zero);
+	//console.log('y_line_on_x_zero', y_line_on_x_zero);
+	//console.log('x_line_on_y_limit', x_line_on_y_limit);
+	//console.log('y_line_on_x_limit', y_line_on_x_limit);
 
 	// draw the original path on the html canvas
 	drawPath(basePath, this.tool, cutType, depth, true, obj.name);

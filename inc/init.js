@@ -192,13 +192,15 @@ addLoadEvent(function() {
 			}
 
 			// add an alert about DXF scaling
-			errStr += 'If the scale is off, open the file in Inkscape, go to File -> Document Properties and set the Display Units to px, Units to px, Scale x to 1 and Scale y to 1.  Then when you save the file, make sure the Base unit is px, use Save as if that window does not show.';
+			errStr += 'If the scale is off, open the file in Inkscape, go to File -> Document Properties and set the Display Units to px, Units to px, Scale x to 1 and Scale y to 1.  Then when you save the file, make sure the Base unit is px, use Save as if that window does not show.  In Inkscape use px as the units and set the tool units in Millcrum, it will be in the first line of the code.';
 
 			if (errStr != '') {
 				doAlert(errStr, 'DXF Errors:');
 			}
 
-			var s = 'var tool = {units:"mm",diameter:6.35,passDepth:4,step:1,rapid:2000,plunge:100,cut:600,zClearance:5,returnHome:true};\n\n';
+			var s = 'var tool = {units: "mm", diameter: 6.35, passDepth: 4, step: 1, rapid: 2000, plunge: 100, cut: 600, zClearance: 5, returnHome: true};\n\n';
+			s += 'tool.limitX = '+(dxf.width*1.1)+';';
+			s += '\ntool.limitY = '+(dxf.height*1.1)+';\n\n';
 			s += '// setup a new Millcrum object with that tool\nvar mc = new Millcrum(tool);\n\n';
 			s += '// set the surface dimensions for the viewer\nmc.surface('+(dxf.width*1.1)+','+(dxf.height*1.1)+');\n\n\n';
 
@@ -208,7 +210,7 @@ addLoadEvent(function() {
 					// name it polyline+c
 					dxf.polylines[c].layer = 'polyline'+c;
 				}
-				s += '//LAYER '+dxf.polylines[c].layer+'\n';
+				s += '// LAYER '+dxf.polylines[c].layer+'\n';
 				s += 'var polyline'+c+' = {type:\'polygon\',name:\'polyline'+c+'\',points:[';
 				for (var p=0; p<dxf.polylines[c].points.length; p++) {
 					s += '['+dxf.polylines[c].points[p][0]+','+dxf.polylines[c].points[p][1]+'],';
@@ -264,7 +266,9 @@ addLoadEvent(function() {
 			// then flipping the y
 
 			// millcrum code holder
-			var s = 'var tool = {units:"mm",diameter:6.35,passDepth:4,step:1,rapid:2000,plunge:100,cut:600,zClearance:5,returnHome:true};\n\n';
+			var s = 'var tool = {units: "mm", diameter: 6.35, passDepth: 4, step: 1, rapid: 2000, plunge: 100, cut: 600, zClearance: 5, returnHome: true};\n\n';
+			s += 'tool.limitX = '+svg.width+';';
+			s += '\ntool.limitY = '+svg.height+';\n\n';
 			s += '// setup a new Millcrum object with that tool\nvar mc = new Millcrum(tool);\n\n';
 			s += '// set the surface dimensions for the viewer, svg import specified '+svg.units+'\nmc.surface('+svg.width+','+svg.height+');\n\n\n';
 

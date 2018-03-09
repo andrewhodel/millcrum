@@ -714,35 +714,35 @@ Dxf.prototype.parseDxf = function(d) {
 	this.height = this.maxPoint[1] - this.minPoint[1];
 	this.avgSize = (this.width+this.height)/2;
 
-	var lineMatches = [];
-	for (var c=0; c<this.lines.length; c++) {
-		lineMatches.push(0);
-		// check for point matches in all other lines
-		for (var p=0; p<this.lines.length; p++) {
-			if (c == p) {
-				// same line
-			} else if (this.lines[c][0] == this.lines[p][0] && this.lines[c][1] == this.lines[p][1]) {
-				// first points match each other
-				lineMatches[c]++;
-			} else if (this.lines[c][0] == this.lines[p][3] && this.lines[c][1] == this.lines[p][4]) {
-				// first point of line c matches second point of line p
-				lineMatches[c]++;
-			} else if (this.lines[c][3] == this.lines[p][0] && this.lines[c][4] == this.lines[p][1]) {
-				// second point of line c matches first point of line p
-				lineMatches[c]++;
-			} else if (this.lines[c][3] == this.lines[p][3] && this.lines[c][4] == this.lines[p][4]) {
-				// second points match each other
-				lineMatches[c]++;
-			}
+	// function for testing if points on 2 different lines are joinable
+	var test_for_join = function(x1, x2, y1, y2) {
+		if (x1 == x2 && y1 == y2) {
+			// the points are exactly the same
+			return true;
 		}
-	}
 
-	//console.log('lineMatches', lineMatches);
+		// otherwise, test if the point is within the closeness threshold
+		// which is 6.35, a normal 1/4 inch tool bit
+		var max_join_distance = 6.35;
 
-	// a line with no matches is just a line in space
-	// a line with 1 match can only be part of an open path
-	// lines with 2 matches can make a polygon
-	// lines with more than 2 matches must be part of one polygon which shares a point with another polygon
+		//console.log('max_join_distance', max_join_distance);
+
+		var proximity_matches = 0;
+		if (Math.abs(x1-x2) <= max_join_distance) {
+			proximity_matches++;
+		}
+		if (Math.abs(y1-y2) <= max_join_distance) {
+			proximity_matches++;
+		}
+
+		if (proximity_matches == 2) {
+			return true;
+		}
+
+		// not a match
+		return false;
+
+	}.bind({dxf: this});
 
 	// now we can loop through all the lines and make polylines for all
 	// lines which share 2 points
@@ -753,10 +753,6 @@ Dxf.prototype.parseDxf = function(d) {
 	// and the start point of this line needs to match the end point of this line
 
 	for (var c=this.lines.length-1; c>=0; c--) {
-		if (lineMatches[c] < 1) {
-			// line is not part of a closed polygon, just leave it as a line
-			continue;
-		}
 		if (newPolylines.length == 0) {
 			// just add this line to a new polyline because it is the first line
 			// line coordinates are [x1, y1, z1, x2, y2, z2]
@@ -766,20 +762,20 @@ Dxf.prototype.parseDxf = function(d) {
 		} else {
 			// as we are sure this line has 2 or more matches
 			// we are positive that we will find a line or a part of a newPolyline that has an end point matching this lines start point
-			// and a line or a part of a newPolyline that has a start point matching this lines end point
+			// or a line or a newPolyline that has a start point matching this lines end point
 			//
 			// first search through each polyline to see if the start or end points line up
 
 			var connected_to_polyline = false;
 			for (var n=0; n<newPolylines.length; n++) {
-				if (newPolylines[n][0][0] == this.lines[c][3] && newPolylines[n][0][1] == this.lines[c][4]) {
+				if (test_for_join(newPolylines[n][0][0], this.lines[c][3], newPolylines[n][0][1], this.lines[c][4])) {
 					// this polyline has a start point which matches this lines end point
 					// so this line's first point needs to be added to the start of this polyline
 					newPolylines[n].unshift([this.lines[c][0], this.lines[c][1]]);
 					this.lines.splice(c, 1);
 					connected_to_polyline = true;
 					break;
-				} else if (newPolylines[n][newPolylines[n].length-1][0] == this.lines[c][0] && newPolylines[n][newPolylines[n].length-1][1] == this.lines[c][1]) {
+				} else if (test_for_join(newPolylines[n][newPolylines[n].length-1][0], this.lines[c][0], newPolylines[n][newPolylines[n].length-1][1], this.lines[c][1])) {
 					// this polyline has an end point which matches this lines start point
 					// so this line's last point needs to be added to the end of this polyline
 					newPolylines[n].push([this.lines[c][3], this.lines[c][4]]);
@@ -799,13 +795,14 @@ Dxf.prototype.parseDxf = function(d) {
 	}
 
 	var joinPolylines = function() {
+
 		var joined = false;
 		// the newPolylines may need to be joined, because the lines may have been out of order
 		for (var c=newPolylines.length-1; c>=0; c--) {
 			for (var n=0; n<newPolylines.length; n++) {
 				if (n == c) {
 					continue;
-				} else if (newPolylines[c][0][0] == newPolylines[n][newPolylines[n].length-1][0] && newPolylines[c][0][1] == newPolylines[n][newPolylines[n].length-1][1]) {
+				} else if (test_for_join(newPolylines[c][0][0], newPolylines[n][newPolylines[n].length-1][0], newPolylines[c][0][1], newPolylines[n][newPolylines[n].length-1][1])) {
 					// the start of polyline c matches the end of polyline n, so polyline c needs to be added to the start of polyline n
 					//
 					// first remove the last point from polyline c
@@ -817,7 +814,7 @@ Dxf.prototype.parseDxf = function(d) {
 					newPolylines.splice(c, 1);
 					joined = true;
 					break;
-				} else if (newPolylines[c][newPolylines[c].length-1][0] == newPolylines[n][0][0] && newPolylines[c][newPolylines[c].length-1][1] == newPolylines[n][0][1]) {
+				} else if (test_for_join(newPolylines[c][newPolylines[c].length-1][0], newPolylines[n][0][0], newPolylines[c][newPolylines[c].length-1][1], newPolylines[n][0][1])) {
 					// the end of polyline c matches the start of polyline n, so polyline c needs to be added to the end of polyline n
 					//
 					// first remove the first point from polyline c

@@ -10,7 +10,13 @@
 // cut: how fast the tool should move on the X and Y axes when cutting
 // zClearance: how high above the surface the tool should be when not cutting
 // returnHome: should the tool return to 0,0,0 after finishing, true or false
-var tool = {units:'mm',diameter:6.35,passDepth:4,step:1,rapid:2000,plunge:100,cut:600,zClearance:5,returnHome:true};
+var tool = {units: 'mm', diameter: 6.35, passDepth: 4, step: 1, rapid: 2000, plunge: 100, cut: 600, zClearance: 5, returnHome: true};
+
+// limiting the cut area
+// -- this is useful for sheeting, if you had a drawing that was 1000x1000 and you only wanted to cut 500x500
+// -- Millcrum can do this automatically for you with tool.xLimit and tool.yLimit
+// tool.xLimit = 500;
+// tool.yLimit = 500;
 
 // setup a new Millcrum object with that tool
 var mc = new Millcrum(tool);
