@@ -10,7 +10,7 @@ function drawPath(p, tool, cutType, depth, isOriginal, name) {
 		var tp = getCanvPoint(p[0]);
 		var r = tool.diameter/2*scaleFactor;
 		// for testing
-		//r = .5;
+		//r = 1.5;
 		canvasContext.arc(tp[0],tp[1],r,0,2*Math.PI);
 		canvasContext.strokeStyle = '#d2691e';
 		canvasContext.fillStyle = '#00008b';

@@ -295,35 +295,91 @@ Millcrum.prototype.generateOffsetPath = function(type, basePath, offsetDistance)
 		//console.log('  intersection point for current mid point in CW');
 		//console.log(iPoint);
 
-		// if iPoint.error == true here and path is inside, then we can somehow shrink the path
-		// but if path is outside there's a problem
-
-		if (iPoint.error == true) {
-			// we can exempt this line
+		if (rPath.length > 0) {
+			// if there are no points in the path we have to find a first point even if there was no intersection
+			if (type == 'inside' && !this.pointInPolygon([iPoint.x, iPoint.y], basePath)) {
+				// this point is not in the base path, no need to add it
+				console.log('intersected inside point outside of base path');
+			} else {
+				rPath.push([iPoint.x,iPoint.y]);
+			}
 		} else {
-
-			// then we can enter that point in the path and it will magically be correct
-			rPath.push([iPoint.x,iPoint.y]);
-
+			// add the point to the path if it was a proper intersection point
+			if (!iPoint.error) {
+				if (type == 'inside' && !this.pointInPolygon([iPoint.x, iPoint.y], basePath)) {
+					console.log('intersected inside point outside of base path');
+				} else {
+					rPath.push([iPoint.x,iPoint.y]);
+				}
+			}
 		}
 
+	}
+
+	// if any points are undefined, remove them
+	for (var c=rPath.length-1; c>=0; c--) {
+		if (typeof(rPath[c]) == 'undefined') {
+			rPath.splice(c, 1);
+		}
 	}
 
 	// then we need to add a point to the end of rPath which goes back to the initial point for rPath
 	rPath.push(rPath[0]);
 
-	// now we need to remove points which are outside the bounds of the basePath
-	if (type == 'inside') {
+	var clean = function(c, prev, cur) {
 
-		for (var c=0; c<rPath.length-1; c++) {
-
-			if (!this.pointInPolygon(rPath[c],basePath)) {
-				// remove this point, it's not within the bound
-				//console.log('removing point from polygon');
-				rPath.splice(c,1);
+		for (var d=0; d<rPath.length; d++) {
+			if (c == d) {
+				continue;
 			}
+			if (d == 0) {
+				var pr = rPath[rPath.length-1];
+			} else if (d == rPath.length-1) {
+				var pr = rPath[0];
+			} else {
+				var pr = rPath[d-1];
+			}
+			var cu = rPath[d];
+			var i = this.linesIntersection(prev, cur, pr, cu);
 
+			if (!i.error) {
+				// the line between prev and cur intersects with the line between pr and cu
+				// we need to remove all points after c and up to d, if d == 0 we need to remove all points after c and up to rPath.length-1
+				//console.log('remove between '+c+' and '+d);
+				if (d == 0) {
+					rPath.splice(c, rPath.length-1-c);
+				} else if (c > d) {
+					rPath.splice(c, rPath.length-1);
+					rPath.splice(0, d-1);
+				} else {
+					rPath.splice(c, d-c);
+				}
+				rPath.splice(c, 0, [i.x, i.y]);
+				if (c > d) {
+					rPath[0] = rPath[rPath.length-1];
+				}
+				break;
+			}
 		}
+
+	}.bind({linesIntersection: this.linesIntersection});
+
+	// now loop through all the lines in rPath and add any points of intersection
+	// cutting off any points after the intersection
+	var nPath = [];
+	for (var c=0; c<rPath.length; c++) {
+		if (c == 0) {
+			var prev = rPath[rPath.length-1];
+		} else if (c == rPath.length-1) {
+			var prev = rPath[0];
+		} else {
+			var prev = rPath[c-1];
+		}
+		var cur = rPath[c];
+		//console.log('point', c, 'of', rPath.length-1);
+
+		// this will clip all opposing X paths that were created
+		clean(c, prev, cur);
 
 	}
 
