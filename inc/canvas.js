@@ -10,14 +10,14 @@ function drawPath(p, tool, cutType, depth, isOriginal, name) {
 		var tp = getCanvPoint(p[0]);
 		var r = tool.diameter/2*scaleFactor;
 		// for testing
-		//r = 1.5;
+		r = 1.5;
 		canvasContext.arc(tp[0],tp[1],r,0,2*Math.PI);
 		canvasContext.strokeStyle = '#d2691e';
 		canvasContext.fillStyle = '#00008b';
 		canvasContext.fill();
 		canvasContext.stroke();
 		// this is for testing, to show the name of a point
-		//canvasContext.fillText(name,tp[0]+20,tp[1]);
+		canvasContext.fillText(name,tp[0]+2,tp[1]+3);
 
 	} else {
 
