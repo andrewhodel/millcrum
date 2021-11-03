@@ -38,7 +38,7 @@ var rect = {type:'rect',xLen:50,yLen:50,name:'50mm square'};
 // tabSpacing (default tool.diameter*5) represents the distance between each tab
 // and tabWidth (default tool.diameter*2) represents the width of each tab
 // tabs are used to hold down material while it is being cut
-mc.cut('pocket', rect, 4, [200,100], {useConventionalCut:true});
+mc.cut('pocket', rect, 450, [200,100], {useConventionalCut:true});
 
 // YOU CAN CLICK ON THE OBJECTS IN MILLCRUM TO SEE THEIR PATH DIRECTION AND CUT INFO
 
@@ -47,7 +47,7 @@ var rectCornerRadius = {type:'rect',xLen:80,yLen:80,cornerRadius:4};
 
 // cut the rectangle with an inside cut, position it at 20,300
 // depth 4
-mc.cut('inside', rectCornerRadius, 4, [20,300]);
+mc.cut('inside', rectCornerRadius, 40, [20,300]);
 
 // create a polygon of any shape
 // polygons are drawn starting at the first point with each point having a line
@@ -69,7 +69,7 @@ var circle = {type:'circle',r:10};
 
 // cut the circle with an inside cut and position it at 200,200
 // depth 4
-mc.cut('inside', circle, 4, [200,200]);
+mc.cut('inside', circle, 40, [200,200]);
 
 // a bigger circle
 var c = {type:'circle',r:100};
@@ -95,7 +95,7 @@ var polygonWithArc = {type:'polygon',points:[
 	// with a radius of 5
 	[0,100]
 ]};
-mc.cut('outside', polygonWithArc, 4, [280,50]);
+mc.cut('outside', polygonWithArc, 250, [280,50]);
 
 // get the gcode
 mc.get();
