@@ -225,14 +225,17 @@ GCView.prototype.drawAxes = function(dist) {
 	var lineMaterialRed = new THREE.LineBasicMaterial({color:'red'});
 	var lineMaterialGreen = new THREE.LineBasicMaterial({color:'green'});
 
-	var xGeo = new THREE.Geometry();
-	xGeo.vertices.push(new THREE.Vector3(0,0,0), new THREE.Vector3(dist,0,0));
+	var xGeoPoints = [];
+	xGeoPoints.push(new THREE.Vector3(0,0,0), new THREE.Vector3(dist,0,0));
+	var xGeo = new THREE.BufferGeometry().setFromPoints(xGeoPoints);
 
-	var yGeo = new THREE.Geometry();
-	yGeo.vertices.push(new THREE.Vector3(0,0,0), new THREE.Vector3(0,dist,0));
+	var yGeoPoints = [];
+	yGeoPoints.push(new THREE.Vector3(0,0,0), new THREE.Vector3(0,dist,0));
+	var yGeo = new THREE.BufferGeometry().setFromPoints(yGeoPoints);
 
-	var zGeo = new THREE.Geometry();
-	zGeo.vertices.push(new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,dist));
+	var zGeoPoints = [];
+	zGeoPoints.push(new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,dist));
+	var zGeo = new THREE.BufferGeometry().setFromPoints(zGeoPoints);
 
 	xyz.add(new THREE.Line(xGeo,lineMaterialBlue), new THREE.Line(yGeo,lineMaterialRed), new THREE.Line(zGeo,lineMaterialGreen));
 
@@ -275,8 +278,9 @@ GCView.prototype.gcLine = function(text,line) {
 
 GCView.prototype.addSegment = function(p1, p2, c) {
 
-	var g = new THREE.Geometry();
-	g.vertices.push(new THREE.Vector3(p1.x,p1.y,p1.z), new THREE.Vector3(p2.x,p2.y,p2.z));
+	var points = [];
+	points.push(new THREE.Vector3(p1.x,p1.y,p1.z), new THREE.Vector3(p2.x,p2.y,p2.z));
+	var g = new THREE.BufferGeometry().setFromPoints(points);
 	this.threeLines.add(new THREE.Line(g,c));
 
 	// setup bounding area
