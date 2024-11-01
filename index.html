@@ -29,8 +29,10 @@ a:hover {
 
 <body style="background-color: #ddd;">
 
-<canvas width="600" height="600" id="container" style="background-color: #fff; border-radius: 4px; z-index: 1;"></canvas>
-<div id="gcview" style="float: right; width: 600px; height: 600px; border: 1px solid #000; border-radius: 4px;"></div>
+<div id="all" style="display: none;">
+
+<canvas id="container" style="background-color: #fff; border-radius: 4px; z-index: 1;"></canvas>
+<div id="gcview" style="float: right; border: 1px solid #000; border-radius: 4px;"></div>
 
 <div style="position: fixed; top: 20px; left: 20px; color: #000; font-size: 14px;">2D Millcrum View</div>
 <div style="position: fixed; top: 20px; right: 20px; color: #fff; font-size: 14px;">Actual 3D GCODE Toolpath</div>
@@ -97,17 +99,252 @@ a:hover {
 <span id="alertText" style="white-space: pre-wrap; font-family: monospace;"></span>
 </div>
 
-<script type="text/javascript" src="inc/three.min.js"></script>
-<script type="text/javascript" src="inc/TrackballControls.js"></script>
-<script type="text/javascript" src="inc/Projector.js"></script>
-<script type="text/javascript" src="inc/CanvasRenderer.js"></script>
-<script type="text/javascript" src="inc/GCView.js"></script>
-<script type="text/javascript" src="inc/mc.js"></script>
-<script type="text/javascript" src="inc/dxf.js"></script>
-<script type="text/javascript" src="inc/svg.js"></script>
-<script type="text/javascript" src="inc/highlight.min.js"></script>
-<script type="text/javascript" src="inc/init.js"></script>
-<script type="text/javascript" src="inc/canvas.js"></script>
+</div>
+
+<script>
+
+// load files
+var load_files = function(files, progress_callback) {
+
+	// loads each file in files into a URL object that is in memory and calls fulfillment
+	// or calls rejection if the files did not all load
+
+	// track progress
+	var total = 0;
+	var loaded = 0;
+
+	var last_progress_update = performance.now();
+
+	var update_progress = function() {
+
+		last_progress_update = performance.now();
+
+		if (typeof(progress_callback) === 'function') {
+			progress_callback(loaded, total);
+		}
+
+	}
+
+	var promise = new Promise(function(result, reject) {
+
+		for (var l in files) {
+
+			if (files[l].type === 'module') {
+
+				// import() does not return a byte size
+				total++;
+
+				import(l).then(function(fulfillment) {
+
+					//console.log('load_files()', this.l, 'import() load');
+
+					// set the name in the global namespace
+					window[files[this.l].name] = fulfillment;
+
+					// increment loaded
+					loaded++;
+					update_progress();
+
+					// set loaded to true
+					files[this.l].loaded = true;
+
+				}.bind({l: l}), function(rejection) {
+
+					console.log('load_files()', this.l, 'import() rejection', rejection);
+
+				}.bind({l: l}));
+
+			} else {
+
+				// load file with XHR
+
+				var xhr = new XMLHttpRequest();
+				xhr.responseType = 'blob';
+
+				total++;
+
+				var bytes_added = 0;
+
+				xhr.addEventListener('progress', function(e) {
+
+					if (e.lengthComputable === true) {
+
+						if (this.bytes_added === 0) {
+
+							// the progress of all files includes this files progress at this resolution
+							total += e.total;
+
+						}
+
+						// the progress of all files includes this files progress at this resolution
+						loaded += e.loaded - this.bytes_added;
+						update_progress();
+
+						this.bytes_added = e.loaded;
+
+					}
+
+					//console.log('load_files()', this.l, 'progress', e.loaded, e.total);
+
+				}.bind({xhr: xhr, l: l, bytes_added: bytes_added}));
+
+				xhr.addEventListener('load', function(e) {
+
+					//console.log('load_files()', this.l, 'xhr load');
+
+					// save the Blob object
+					files[this.l].blob = this.xhr.response;
+					// make a URL object by default
+					files[this.l].url = URL.createObjectURL(this.xhr.response);
+
+					// increment loaded
+					loaded++;
+					update_progress();
+
+					// set loaded to true
+					files[this.l].loaded = true;
+
+				}.bind({xhr: xhr, l: l}));
+
+				// open async, loads many at once
+				xhr.open('GET', l, true);
+				xhr.send();
+
+			}
+
+		}
+
+		var failure_check_interval = setInterval(function() {
+
+			if (performance.now() - last_progress_update > 1000 * 10) {
+
+				// 10 seconds without an update
+				clearInterval(failure_check_interval);
+				reject();
+				return;
+
+			}
+
+			var failure = false;
+			for (var l in files) {
+
+				if (files[l].loaded !== true) {
+					// this file is not finished yet
+					failure = true;
+				}
+
+			}
+
+			if (failure === false) {
+				// all files loaded
+				clearInterval(failure_check_interval);
+				result();
+			}
+
+		}, 100);
+
+	});
+
+	return promise;
+
+}
+
+var progress_element = document.createElement('div');
+progress_element.style.position = 'fixed';
+progress_element.style.width = '200px';
+progress_element.style.left = 'calc(50% - 100px)';
+progress_element.style['text-align'] = 'center';
+document.body.appendChild(progress_element);
+
+var progress_callback = function(loaded, total) {
+
+	var pct = loaded / total;
+
+	progress_element.innerHTML = 'loading: ' + loaded + '/' + total;
+
+	if (pct === 1) {
+		document.body.removeChild(progress_element);
+	}
+
+}
+
+progress_callback(0, 1);
+
+var loaded_files = {'inc/three.min.js': {type: 'js'}, 'inc/TrackballControls.js': {type: 'js'}, 'inc/GCView.js': {type: 'js'}, 'inc/mc.js': {type: 'js'}, 'inc/dxf.js': {type: 'js'}, 'inc/svg.js': {type: 'js'}, 'inc/highlight.min.js': {type: 'js'}, 'inc/canvas.js': {type: 'js'}, 'inc/init.js': {type: 'js'}};
+load_files(loaded_files, progress_callback).then(function(fullfillment) {
+
+	//console.log('loaded_files', loaded_files);
+
+	// load each in the order required
+
+	// files with .type: 'js', 'css' or 'blob' provide a .blob: Blob and a .url: URL
+	// files with .type: 'module' are loaded with import() and the Window property named .name contains the module
+	// any Worker() threads can use the files objects to access the existing URL object and not require many requests to the same HTTP source
+
+	var order = [];
+	for (var l in loaded_files) {
+		order.push(l);
+	}
+
+	var next_script = function(order_index) {
+
+		if (order_index === order.length) {
+			return;
+		}
+
+		var l = order[order_index];
+
+		//console.log(order_index, l);
+
+		var lf = null;
+
+		if (loaded_files[l].type === 'css') {
+
+			// loaded css file
+			lf = document.createElement('link');
+			lf.rel = 'stylesheet';
+			lf.href = loaded_files[l].url;
+
+		} else if (loaded_files[l].type === 'js') {
+
+			// loaded javascript file
+			lf = document.createElement('script');
+			lf.src = loaded_files[l].url;
+
+		}
+
+		if (lf !== null) {
+
+			document.body.appendChild(lf);
+
+			lf.addEventListener('load', function(e) {
+				//console.log('load event');
+				order_index++;
+				next_script(order_index);
+			});
+
+		} else {
+
+			order_index++;
+			next_script(order_index);
+
+		}
+
+	}
+
+	if (order.length > 0) {
+		next_script(0);
+	}
+
+	document.getElementById('all').style.display = 'block';
+
+}, function(rejection) {
+
+	alert('Network error loading files, reload page.');
+	console.log('load_files() rejection', loaded_files);
+
+});
+</script>
 
 </body>
 

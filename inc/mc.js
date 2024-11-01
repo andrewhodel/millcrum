@@ -26,8 +26,8 @@ Millcrum.prototype.surface = function(x,y) {
 		globalSy = y;
 	}
 
-	// run the init function
-	init();
+	// run the canvas_init function
+	canvas_init();
 
 };
 

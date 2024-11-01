@@ -1,5 +1,5 @@
-// GCView - an html5 GCODE viewer which uses Three.js and can display on Canvas or with WebGL
-// Copyright 2015 Andrew Hodel (www.xyzbots.com)
+// GCView - an html5 GCODE viewer which uses Three.js
+// Copyright 2024 Andrew Hodel andrew@xyzbots.com
 //
 
 var GCView = function(container) {
@@ -25,12 +25,11 @@ var GCView = function(container) {
             y: -1000000,
             z: -1000000
         }
-    };
+	};
 	this.threeLines = new THREE.Object3D();
 
 	// init the GCView
-	// this expects these files from Three.js (version 73)
-	// CanvasRenderer.js, Projector.js, TrackballControls.js, three.min.js
+	// TrackballControls.js, three.min.js
 	console.log('setting up GCView');
 
 	// setup container width and height as they are only given as strings with px appended
@@ -48,14 +47,8 @@ var GCView = function(container) {
 	// create the scene object
 	this.scene = new THREE.Scene();
 
-	// check if webgl is available on the users browser
-	if ( this.webglAvailable() ) {
-		// use webgl
-		this.renderer = new THREE.WebGLRenderer();
-	} else {
-		// use canvas
-		this.renderer = new THREE.CanvasRenderer();
-	}
+	// use webgl
+	this.renderer = new THREE.WebGLRenderer();
 
 	// set renderer options
 	this.renderer.setClearColor( 0x000000 );
@@ -68,7 +61,9 @@ var GCView = function(container) {
 	this.container.appendChild( this.renderer.domElement );
 
 	// add an event to handle window resizes
-	window.addEventListener( 'resize', this.onWindowResize, false );
+	window.addEventListener( 'resize', function() {
+		this.gcview.onWindowResize();
+	}.bind({gcview: this}));
 
 };
 
@@ -202,19 +197,6 @@ GCView.prototype.render = function() {
 	// this renders the scene with the camera
 	this.controls.update();
 	this.renderer.render( this.scene, this.camera );
-}
-
-GCView.prototype.webglAvailable = function() {
-	// check if webgl is available on the users browser
-	try {
-		var canvas = document.createElement( 'canvas' );
-		return !!( window.WebGLRenderingContext && (
-			canvas.getContext( 'webgl' ) ||
-			canvas.getContext( 'experimental-webgl' ) )
-		);
-	} catch ( e ) {
-		return false;
-	}
 }
 
 GCView.prototype.drawAxes = function(dist) {

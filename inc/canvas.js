@@ -1,3 +1,6 @@
+var globalSx = 0;
+var globalSy = 0;
+
 function drawPath(p, tool, cutType, depth, isOriginal, name) {
 
 	if (p.length == 1) {
@@ -131,12 +134,11 @@ function getCanvPoint(p) {
 
 }
 
-// re-init on resize
 window.onresize = function(e) {
-	init();
+	canvas_init();
 }
 
-function init() {
+function canvas_init() {
 
 	canv = document.getElementById("container");
 	canv.width = (window.innerWidth-40)/2;
@@ -146,7 +148,7 @@ function init() {
 	// this will be the maximum size
 	sX = globalSx;
 	sY = globalSy;
-	console.log('surface size: '+sX+','+sY);
+	//console.log('surface size: '+sX+','+sY);
 
 	canvasContext = canv.getContext('2d');
 
@@ -254,4 +256,4 @@ function init() {
 
 }
 
-addLoadEvent(init);
+canvas_init();
