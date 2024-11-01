@@ -72,6 +72,116 @@ var GCView = function(container) {
 
 };
 
+GCView.prototype.clear = function() {
+	// clear the scene
+	this.three_dispose_of_all_children(this.scene);
+}
+
+GCView.prototype.three_dispose_of_all_children = function(object) {
+
+	var object_count = 0;
+
+	while (object.children.length > 0) {
+		if (object.children[0].children === undefined || object.children[0].children.length === 0) {
+
+			// dispose object
+			// must be before removeFromParent() and removeFromParent() must be next in the main thread
+			this.three_dispose_object_3d(object.children[0]);
+
+			// remove object
+			object.children[0].removeFromParent();
+
+			object_count++;
+
+		} else {
+
+			// remove children
+			object_count += this.three_dispose_of_all_children(object.children[0]);
+
+			// dispose object
+			// must be before removeFromParent() and removeFromParent() must be next in the main thread
+			this.three_dispose_object_3d(object.children[0]);
+
+			// remove object
+			object.children[0].removeFromParent();
+
+			object_count++;
+		}
+	}
+
+	return object_count;
+
+}
+
+GCView.prototype.three_dispose_object_3d = function(object) {
+
+	object.traverse(obj => {
+
+		if (obj.material) {
+
+			obj.material.dispose();
+
+			if (obj.material.map) {
+				obj.material.map.dispose();
+			}
+			if (obj.material.lightMap) {
+				obj.material.lightMap.dispose();
+			}
+			if (obj.material.aoMap) {
+				obj.material.aoMap.dispose();
+			}
+			if (obj.material.emissiveMap) {
+				obj.material.emissiveMap.dispose();
+			}
+			if (obj.material.bumpMap) {
+				obj.material.bumpMap.dispose();
+			}
+			if (obj.material.normalMap) {
+				obj.material.normalMap.dispose();
+			}
+			if (obj.material.displacementMap) {
+				obj.material.displacementMap.dispose();
+			}
+			if (obj.material.roughnessMap) {
+				obj.material.roughnessMap.dispose();
+			}
+			if (obj.material.metalnessMap) {
+				obj.material.metalnessMap.dispose();
+			}
+			if (obj.material.alphaMap) {
+				obj.material.alphaMap.dispose();
+			}
+			if(obj.material.envMaps){
+				obj.material.envMaps.dispose()
+			}
+			if(obj.material.envMap){
+				obj.material.envMap.dispose()
+			}
+			if(obj.material.specularMap){
+				obj.material.specularMap.dispose()
+			}
+			if(obj.material.gradientMap){
+				obj.material.gradientMap.dispose()
+			}
+
+		}
+
+		if (obj.geometry) {
+			obj.geometry.dispose();
+		}
+
+		if (obj.texture) {
+			obj.texture.dispose();
+		}
+
+		if (obj.bufferBeometry) {
+			obj.bufferGeometry.dispose();
+		}
+
+	});
+
+}
+
 GCView.prototype.onWindowResize = function() {
 	// this just updates the viewport when the window is resized
 	this.camera.aspect = this.containerWidth / this.containerHeight;

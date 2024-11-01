@@ -17,6 +17,7 @@ var toSaveGcode = '';
 var clickPaths = [];
 var globalSx = 0;
 var globalSy = 0;
+var gcview = null;
 
 var doAlert;
 
@@ -97,8 +98,10 @@ addLoadEvent(function() {
 	var examples = document.getElementById('examples');
 	var examplesLink = document.getElementById('examplesLink');
 
-	gcview.style.width = (window.innerWidth-40)/2+'px';
-	gcview.style.height = (window.innerHeight-40)+'px';
+	if (gcview !== null) {
+		gcview.style.width = (window.innerWidth-40)/2+'px';
+		gcview.style.height = (window.innerHeight-40)+'px';
+	}
 
 	// update highlightjs when millcrumCode is edited
 	millcrumCode.addEventListener('keyup', function(e) {
@@ -384,9 +387,13 @@ addLoadEvent(function() {
 		// set saveGcode to visible
 		sgc.style.display = 'inline';
 
+		if (gcview !== null) {
+			gcview.clear();
+		}
+
 		// load gcode in GCView
 		// after re-instantiating it
-		var gcview = new GCView(gcviewContainer);
+		gcview = new GCView(gcviewContainer);
 		gcview.loadGC(toSaveGcode);
 
 	});
